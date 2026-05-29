@@ -307,6 +307,7 @@ async function saveSnapshotToDatabase(snapshot) {
     const codes = uniqueBy(snapshot.codes || [], (item) => item.id || item.code);
     const items = uniqueBy(snapshot.items || [], (item) => item.id);
     const logs = uniqueBy(snapshot.logs || [], (item) => item.id);
+    const userIds = new Set(users.map((user) => user.id).filter(Boolean));
 
     await client.query('begin');
 
@@ -373,9 +374,12 @@ async function saveSnapshotToDatabase(snapshot) {
     }
 
     for (const code of codes) {
+      const createdBy = code.createdBy && userIds.has(code.createdBy)
+        ? code.createdBy
+        : null;
       await client.query(
         'insert into codes (id, code, company_id, target_username, is_used, created_by, created_at) values ($1, $2, $3, $4, $5, $6, coalesce($7::timestamptz, now()))',
-        [code.id, code.code, code.companyId, code.targetUsername, !!code.isUsed, code.createdBy || null, code.date || null]
+        [code.id, code.code, code.companyId, code.targetUsername, !!code.isUsed, createdBy, code.date || null]
       );
     }
 
