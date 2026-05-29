@@ -273,6 +273,26 @@ window.saveServerWebhook = async (cId) => {
     if (hubContent) renderGlobalServers(hubContent);
 };
 
+<<<<<<< HEAD
+=======
+window.saveSystemConfig = async () => {
+    const webhookInput = document.getElementById('sys_webhook');
+    const avatarTemplateInput = document.getElementById('sys_avatar_template');
+    const newWb = webhookInput ? webhookInput.value.trim() : '';
+    const newAvatarTemplate = normalizeAvatarTemplate(avatarTemplateInput ? avatarTemplateInput.value : '');
+
+    db.data.systemConfig = normalizeSystemConfig({
+        webhookUrl: newWb,
+        avatarUrlTemplate: newAvatarTemplate
+    });
+    await db.save();
+    showToast('Настройки системы сохранены.');
+
+    const hubContent = document.getElementById('globalHubContent');
+    if (hubContent) renderGlobalSettings(hubContent);
+};
+
+>>>>>>> 1e322d1 (Update site)
 window.openCompanyRenameModal = (cId) => {
     const comp = db.data.companies.find(c => c.id === cId);
     if (!comp) return;
