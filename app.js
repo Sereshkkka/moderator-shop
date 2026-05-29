@@ -1797,6 +1797,7 @@ async function syncDashboardTabData(target) {
 }
 
 function renderDashboardTab(target, content, isWebsiteAdmin) {
+    content.innerHTML = '';
     if (target === 'profile') renderProfile(content);
     if (target === 'store') renderStore(content);
     if (target === 'cart') renderCart(content);
@@ -1814,6 +1815,16 @@ function renderDashboardTab(target, content, isWebsiteAdmin) {
     if (target === 'logs' && hasPermission('view_logs')) renderLogs(content);
     if (target === 'archive' && hasPermission('access_archive')) renderArchive(content);
     if (target === 'globalctrl' && isWebsiteAdmin) renderGlobalControl(content);
+}
+
+function canOpenDashboardTarget(target, isWebsiteAdmin) {
+    target = normalizeDashboardTarget(target);
+    if (target === 'profile' || target === 'store' || target === 'cart' || target === 'users') return true;
+    if (target === 'staffprofile') return !!getSelectedStaffProfileUser();
+    if (target === 'logs') return hasPermission('view_logs');
+    if (target === 'archive') return hasPermission('access_archive');
+    if (target === 'globalctrl') return !!isWebsiteAdmin;
+    return false;
 }
 
 function renderDashboard(root) {
@@ -1918,6 +1929,11 @@ function renderDashboard(root) {
 
     const switchTab = async (target) => {
         target = normalizeDashboardTarget(target);
+        if (!canOpenDashboardTarget(target, isWebsiteAdmin)) {
+            target = 'profile';
+            try { sessionStorage.setItem('active_tab', target); } catch (e) {}
+            showToast('Этот раздел недоступен для текущей роли.', 'error');
+        }
         links.forEach(l => l.classList.remove('active'));
         const activeNavTarget = target === 'staffprofile' ? 'users' : target;
         const activeLink = document.querySelector('.nav-link[data-target="' + activeNavTarget + '"]');
@@ -1947,6 +1963,10 @@ function renderDashboard(root) {
     let lastTab = sessionStorage.getItem('active_tab') || 'profile';
     if (lastTab === 'staffprofile' && !getSelectedStaffProfileUser()) {
         lastTab = 'users';
+    }
+    if (!canOpenDashboardTarget(lastTab, isWebsiteAdmin)) {
+        lastTab = 'profile';
+        try { sessionStorage.setItem('active_tab', lastTab); } catch (e) {}
     }
     switchTab(lastTab);
     updateCartBadge();
