@@ -148,13 +148,41 @@ function getAvatarUrlTemplate() {
     return normalizeAvatarTemplate(db && db.data && db.data.systemConfig ? db.data.systemConfig.avatarUrlTemplate : '');
 }
 
+function appendAvatarSize(url, size) {
+    try {
+        const parsedUrl = new URL(url, window.location.origin);
+        const lowerHost = parsedUrl.hostname.toLowerCase();
+        const hasSizeToken = ['size', 'fx', 'fy', 'width', 'height']
+            .some(paramName => parsedUrl.searchParams.has(paramName));
+
+        if (!hasSizeToken) {
+            if (lowerHost.includes('skins.mcskill.net')) {
+                parsedUrl.searchParams.set('fx', size);
+                parsedUrl.searchParams.set('fy', size);
+            } else {
+                parsedUrl.searchParams.set('size', size);
+            }
+        }
+
+        return parsedUrl.toString();
+    } catch (error) {
+        const separator = url.includes('?') ? '&' : '?';
+        return /([?&])(size|fx|fy|width|height)=/i.test(url)
+            ? url
+            : url + separator + 'size=' + encodeURIComponent(size);
+    }
+}
+
 function getUserAvatarUrl(username, size) {
     const normalizedUsername = (username || '').trim();
     const targetSize = Number(size) > 0 ? String(size) : '32';
     const template = getAvatarUrlTemplate();
-    return template
+    const resolvedUrl = template
+        .replace(/\{username\}/g, encodeURIComponent(normalizedUsername))
+        .replace(/\{size\}/g, encodeURIComponent(targetSize))
         .replace(/insert/g, encodeURIComponent(normalizedUsername))
         .replace(/size/g, encodeURIComponent(targetSize));
+    return appendAvatarSize(resolvedUrl, targetSize);
 }
 
 class SupabaseTableGateway {

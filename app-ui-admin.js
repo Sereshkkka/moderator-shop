@@ -241,6 +241,55 @@ function renderGlobalRoles(container) {
 }
 
 function renderGlobalSettings(container) {
+    const usingDatabaseSync = USE_SERVER_DATABASE_SYNC;
+    const usingLocalWebhookRelay = USE_LOCAL_WEBHOOK_RELAY;
+    const systemConfig = normalizeSystemConfig(db.data.systemConfig);
+    const eWebhook = escapeHTML(systemConfig.webhookUrl);
+    const eAvatarTemplate = escapeHTML(systemConfig.avatarUrlTemplate);
+    const previewUser = currentUser && currentUser.username ? currentUser.username : 'Steve';
+
+    container.innerHTML = [
+        '<h4>Глобальные настройки системы</h4>',
+        '<div class="glass-panel" style="padding:1.5rem; max-width:760px">',
+            '<div style="display:grid; gap:1rem;">',
+                '<div style="padding:1rem 1.1rem; border-radius:12px; border:1px solid rgba(96,165,250,0.28); background:rgba(96,165,250,0.10); color:#dbeafe;">',
+                    '<strong>Синхронизация Supabase</strong><br>',
+                    '<span style="font-size:0.9rem; color:#bfdbfe;">',
+                        (usingDatabaseSync
+                            ? 'Подключена. Сайт загружает и сохраняет данные в Supabase через сервер.'
+                            : 'Отключена. Сейчас проект не использует серверную базу.'),
+                    '</span>',
+                '</div>',
+                '<div style="padding:1rem 1.1rem; border-radius:12px; border:1px solid rgba(16,185,129,0.28); background:rgba(16,185,129,0.10); color:#bbf7d0;">',
+                    '<strong>Webhook relay</strong><br>',
+                    '<span style="font-size:0.9rem; color:#d1fae5;">',
+                        (usingLocalWebhookRelay
+                            ? 'Включен. Покупки отправляют webhook через Node-сервер.'
+                            : 'Отключен.'),
+                    '</span>',
+                '</div>',
+                '<label style="display:grid; gap:0.45rem;">',
+                    '<span style="font-weight:600;">Глобальный webhook</span>',
+                    '<input id="sys_webhook" class="form-control" value="' + eWebhook + '" placeholder="https://discord.com/api/webhooks/...">',
+                '</label>',
+                '<label style="display:grid; gap:0.45rem;">',
+                    '<span style="font-weight:600;">Шаблон ссылки аватарок</span>',
+                    '<input id="sys_avatar_template" class="form-control" value="' + eAvatarTemplate + '" placeholder="https://example.com/avatar/{username}">',
+                    '<span style="font-size:0.88rem; color:var(--text-muted);">Используйте <code>{username}</code> или <code>insert</code> вместо ника. Размер подставится автоматически.</span>',
+                '</label>',
+                '<div style="display:flex; align-items:center; gap:0.75rem;">',
+                    '<img src="' + getUserAvatarUrl(previewUser, 32) + '" class="user-avatar" style="object-fit:cover; image-rendering:pixelated; background:transparent;">',
+                    '<span style="font-size:0.88rem; color:var(--text-muted);">Предпросмотр для ' + escapeHTML(previewUser) + '</span>',
+                '</div>',
+                '<div style="display:flex; justify-content:flex-end;">',
+                    '<button class="btn btn-primary" onclick="saveSystemConfig()">Сохранить настройки</button>',
+                '</div>',
+            '</div>',
+        '</div>'
+    ].join('');
+}
+
+function renderGlobalSettings(container) {
     const usingPostgres = USE_LOCAL_POSTGRES_SYNC;
     const usingLocalWebhookRelay = USE_LOCAL_WEBHOOK_RELAY;
     container.innerHTML = [
@@ -336,5 +385,46 @@ function buildGlobalServerRow(c) {
                 '</div>',
             '</td>',
         '</tr>'
+    ].join('');
+}
+
+function renderGlobalSettings(container) {
+    const usingDatabaseSync = USE_SERVER_DATABASE_SYNC;
+    const usingLocalWebhookRelay = USE_LOCAL_WEBHOOK_RELAY;
+    const systemConfig = normalizeSystemConfig(db.data.systemConfig);
+    const eWebhook = escapeHTML(systemConfig.webhookUrl);
+    const eAvatarTemplate = escapeHTML(systemConfig.avatarUrlTemplate);
+    const previewUser = currentUser && currentUser.username ? currentUser.username : 'Steve';
+
+    container.innerHTML = [
+        '<h4>Глобальные настройки системы</h4>',
+        '<div class="glass-panel" style="padding:1.5rem; max-width:760px">',
+            '<div style="display:grid; gap:1rem;">',
+                '<div style="padding:1rem 1.1rem; border-radius:12px; border:1px solid rgba(96,165,250,0.28); background:rgba(96,165,250,0.10); color:#dbeafe;">',
+                    '<strong>Синхронизация Supabase</strong><br>',
+                    '<span style="font-size:0.9rem; color:#bfdbfe;">' + (usingDatabaseSync ? 'Подключена. Данные сохраняются в Supabase через сервер.' : 'Отключена.') + '</span>',
+                '</div>',
+                '<div style="padding:1rem 1.1rem; border-radius:12px; border:1px solid rgba(16,185,129,0.28); background:rgba(16,185,129,0.10); color:#bbf7d0;">',
+                    '<strong>Webhook relay</strong><br>',
+                    '<span style="font-size:0.9rem; color:#d1fae5;">' + (usingLocalWebhookRelay ? 'Включен. Webhook отправляется через Node-сервер.' : 'Отключен.') + '</span>',
+                '</div>',
+                '<label style="display:grid; gap:0.45rem;">',
+                    '<span style="font-weight:600;">Глобальный webhook</span>',
+                    '<input id="sys_webhook" class="form-control" value="' + eWebhook + '" placeholder="https://discord.com/api/webhooks/...">',
+                '</label>',
+                '<label style="display:grid; gap:0.45rem;">',
+                    '<span style="font-weight:600;">Шаблон ссылки аватарок</span>',
+                    '<input id="sys_avatar_template" class="form-control" value="' + eAvatarTemplate + '" placeholder="https://example.com/avatar/{username}">',
+                    '<span style="font-size:0.88rem; color:var(--text-muted);">Используйте <code>{username}</code> или <code>insert</code> вместо ника. Размер подставится автоматически.</span>',
+                '</label>',
+                '<div style="display:flex; align-items:center; gap:0.75rem;">',
+                    '<img src="' + getUserAvatarUrl(previewUser, 32) + '" class="user-avatar" style="object-fit:cover; image-rendering:pixelated; background:transparent;">',
+                    '<span style="font-size:0.88rem; color:var(--text-muted);">Предпросмотр для ' + escapeHTML(previewUser) + '</span>',
+                '</div>',
+                '<div style="display:flex; justify-content:flex-end;">',
+                    '<button class="btn btn-primary" onclick="saveSystemConfig()">Сохранить настройки</button>',
+                '</div>',
+            '</div>',
+        '</div>'
     ].join('');
 }
