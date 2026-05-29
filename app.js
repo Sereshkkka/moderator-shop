@@ -2364,6 +2364,7 @@ function canManageUserRole(user) {
     if (user.id === currentUser.id) return false;
     if (getUserRoleForCompany(user, currentCompanyId) === PENDING_ROLE_ID) return false;
     if (isUserOnVacation(user, currentCompanyId)) return false;
+    if (isPrimaryOwner()) return true;
     if (getUserRoleForCompany(user, currentCompanyId) === 'admin' && !isPrimaryOwner()) return false;
     const myTier = getRoleTier(getCurrentUserRoleId());
     const userTier = getRoleTier(getEffectiveUserRoleForCompany(user, currentCompanyId));
