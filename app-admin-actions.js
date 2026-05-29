@@ -38,7 +38,7 @@ window.saveDiscordEdit = async (userId) => {
     }
     const conflictUser = findUserByDiscordId(normalized, targetUser.id);
     if (conflictUser) {
-        showToast('Этот Discord уже привязан к пользователю ' + conflictUser.username + '.', 'error');
+        showToast('Discord используется другим пользователем.', 'error');
         return;
     }
 

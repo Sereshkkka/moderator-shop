@@ -273,8 +273,6 @@ window.saveServerWebhook = async (cId) => {
     if (hubContent) renderGlobalServers(hubContent);
 };
 
-<<<<<<< HEAD
-=======
 window.saveSystemConfig = async () => {
     const webhookInput = document.getElementById('sys_webhook');
     const avatarTemplateInput = document.getElementById('sys_avatar_template');
@@ -292,7 +290,6 @@ window.saveSystemConfig = async () => {
     if (hubContent) renderGlobalSettings(hubContent);
 };
 
->>>>>>> 1e322d1 (Update site)
 window.openCompanyRenameModal = (cId) => {
     const comp = db.data.companies.find(c => c.id === cId);
     if (!comp) return;

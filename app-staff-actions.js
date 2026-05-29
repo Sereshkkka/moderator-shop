@@ -220,6 +220,9 @@ window.updateRole = async (uid) => {
                 currentUser.role = newRole;
             }
         }
+        if (newRole !== 'admin' && sessionStorage.getItem('active_tab') === 'globalctrl') {
+            sessionStorage.setItem('active_tab', 'profile');
+        }
         db.save();
         showToast('Роль на сервере обновлена.');
         closeBalanceModalAndReturnToStaffProfile(uid);

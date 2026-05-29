@@ -1,10 +1,5 @@
-<<<<<<< HEAD
 ﻿const DB_KEY = 'nexus_coin_system_db';
 
-=======
-﻿const DB_KEY = 'nexus_coin_system_db';
-
->>>>>>> 1e322d1 (Update site)
 const APP_CONFIG = window.__APP_CONFIG__ || {};
 const AUTH_ACCESS_TOKEN_KEY = 'supabase_auth_access_token';
 const AUTH_REFRESH_TOKEN_KEY = 'supabase_auth_refresh_token';
@@ -41,7 +36,6 @@ const TABLE_CONFIG = {
     logs: 'logs',
     systemConfig: 'system_config'
 };
-<<<<<<< HEAD
 
 async function hashPassword(str) {
     const encoder = new TextEncoder();
@@ -49,15 +43,6 @@ async function hashPassword(str) {
     const hash = await crypto.subtle.digest('SHA-256', data);
     return Array.from(new Uint8Array(hash))
         .map(b => b.toString(16).padStart(2, '0'))
-=======
-
-async function hashPassword(str) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(str);
-    const hash = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(hash))
-        .map(b => b.toString(16).padStart(2, '0'))
->>>>>>> 1e322d1 (Update site)
         .join('');
 }
 
@@ -138,11 +123,7 @@ function ensureDefaultAdminInData(data) {
 
     return { changed, admin };
 }
-<<<<<<< HEAD
 
-=======
-
->>>>>>> 1e322d1 (Update site)
 function escapeHTML(str) {
     if (!str) return '';
     const p = document.createElement('p');
@@ -844,13 +825,8 @@ class SupabaseAuthGateway {
         }
     }
 }
-<<<<<<< HEAD
 
 
-=======
-
-
->>>>>>> 1e322d1 (Update site)
 function getRoleTier(roleId) {
     const r = db.data.roles.find(x => x.id === roleId);
     return r ? r.tier : 1;
@@ -989,6 +965,10 @@ function hasPermission(perm) {
     return r.perms.includes(perm) || r.perms.includes('all');
 }
 
+function hasGlobalControlAccess() {
+    return getCurrentUserRoleId() === 'admin';
+}
+
 function canClearCurrentCompanyLogs() {
     if (!currentUser) return false;
     return getRoleTier(getCurrentUserRoleId()) >= 5;
@@ -1030,18 +1010,13 @@ function shouldPreferRemoteSnapshot(localSnapshot, remoteSnapshot) {
 
     return remoteWeight >= localWeight;
 }
-<<<<<<< HEAD
 
-=======
-
->>>>>>> 1e322d1 (Update site)
 class Database {
     constructor() {
         this.pendingRemoteSave = null;
         this.remoteSaveTimer = null;
         this.load();
         if (!this.data) {
-<<<<<<< HEAD
             this.data = {
                 users: [
                     { id: this.generateId(), username: DEFAULT_ADMIN_USERNAME, password: DEFAULT_ADMIN_PASSWORD_HASH, coins: 0, role: 'admin', date: new Date().toISOString(), cart: [] }
@@ -1050,23 +1025,12 @@ class Database {
                 items: [
                     { id: this.generateId(), name: 'Неоновая Рамка', description: 'Светящаяся рамка для вашего профиля.', price: 50, image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=400&q=80' },
                     { id: this.generateId(), name: 'Золотой Ник', description: 'Сделайте ваш ник золотым в списке.', price: 150, image: 'https://images.unsplash.com/photo-1620121692029-d088224ddc74?w=400&q=80' }
-=======
-            this.data = {
-                users: [
-                    { id: this.generateId(), username: DEFAULT_ADMIN_USERNAME, password: DEFAULT_ADMIN_PASSWORD_HASH, coins: 0, role: 'admin', date: new Date().toISOString(), cart: [] }
-                ],
-                codes: [],
-                items: [
-                    { id: this.generateId(), name: 'Неоновая Рамка', description: 'Светящаяся рамка для вашего профиля.', price: 50, image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=400&q=80' },
-                    { id: this.generateId(), name: 'Золотой Ник', description: 'Сделайте ваш ник золотым в списке.', price: 150, image: 'https://images.unsplash.com/photo-1620121692029-d088224ddc74?w=400&q=80' }
->>>>>>> 1e322d1 (Update site)
                 ],
                 logs: [],
                 roles: [
                     { id: PENDING_ROLE_ID, label: 'Ожидание', tier: 0, color: '#f59e0b', perms: [] },
                     { id: VACATION_ROLE_ID, label: 'В отпуске', tier: 0.5, color: '#14b8a6', perms: [] },
                     { id: 'admin', label: 'Гл. Администратор', tier: 8, color: '#ec4899', perms: ['all'] },
-<<<<<<< HEAD
                     { id: 'server_admin', label: 'Админ Сервера', tier: 7, color: '#f59e0b', perms: ['access_mod_panel', 'generate_codes', 'manage_store', 'view_logs', 'edit_balance', 'edit_roles', 'access_archive'] },
                     { id: 'tech_admin', label: 'Тех-Админ', tier: 6, color: '#06b6d4', perms: ['access_mod_panel', 'manage_store', 'view_logs', 'edit_balance', 'access_archive'] },
                     { id: 'kurator', label: 'Куратор', tier: 5, color: '#eab308', perms: ['access_mod_panel', 'view_logs', 'edit_balance', 'access_archive'] },
@@ -1081,27 +1045,10 @@ class Database {
         }
         
         if (!this.data.roles) {
-=======
-                    { id: 'server_admin', label: 'Админ Сервера', tier: 7, color: '#f59e0b', perms: ['access_mod_panel', 'generate_codes', 'manage_store', 'view_logs', 'edit_balance', 'edit_roles', 'access_archive'] },
-                    { id: 'tech_admin', label: 'Тех-Админ', tier: 6, color: '#06b6d4', perms: ['access_mod_panel', 'manage_store', 'view_logs', 'edit_balance', 'access_archive'] },
-                    { id: 'kurator', label: 'Куратор', tier: 5, color: '#eab308', perms: ['access_mod_panel', 'view_logs', 'edit_balance', 'access_archive'] },
-                    { id: 'GM', label: 'Гл. Модератор', tier: 4, color: '#a855f7', perms: ['access_mod_panel', 'view_logs', 'access_archive'] },
-                    { id: 'gd', label: 'ГД', tier: 4, color: '#10b981', perms: ['access_mod_panel', 'view_logs', 'access_archive'] },
-                    { id: 'ST-moderator', label: 'Ст-Модератор', tier: 3, color: '#6366f1', perms: ['access_mod_panel', 'view_logs', 'access_archive'] },
-                    { id: 'moderator', label: 'Модератор', tier: 2, color: '#38bdf8', perms: ['access_mod_panel'] },
-                    { id: 'helper', label: 'Хелпер', tier: 1, color: '#10b881', perms: [] }
-                ]
-            };
-            this.save();
-        }
-        
-        if (!this.data.roles) {
->>>>>>> 1e322d1 (Update site)
             this.data.roles = [
                 { id: PENDING_ROLE_ID, label: 'Ожидание', tier: 0, color: '#f59e0b', perms: [] },
                 { id: VACATION_ROLE_ID, label: 'В отпуске', tier: 0.5, color: '#14b8a6', perms: [] },
                 { id: 'admin', label: 'Гл. Администратор', tier: 8, color: '#ec4899', perms: ['all'] },
-<<<<<<< HEAD
                 { id: 'server_admin', label: 'Админ Сервера', tier: 7, color: '#f59e0b', perms: ['access_mod_panel', 'generate_codes', 'manage_store', 'view_logs', 'edit_balance', 'edit_roles', 'access_archive'] },
                 { id: 'tech_admin', label: 'Тех-Админ', tier: 6, color: '#06b6d4', perms: ['access_mod_panel', 'manage_store', 'view_logs', 'edit_balance', 'access_archive'] },
                 { id: 'kurator', label: 'Куратор', tier: 5, color: '#eab308', perms: ['access_mod_panel', 'view_logs', 'edit_balance', 'access_archive'] },
@@ -1124,30 +1071,6 @@ class Database {
             this.save();
         }
         
-=======
-                { id: 'server_admin', label: 'Админ Сервера', tier: 7, color: '#f59e0b', perms: ['access_mod_panel', 'generate_codes', 'manage_store', 'view_logs', 'edit_balance', 'edit_roles', 'access_archive'] },
-                { id: 'tech_admin', label: 'Тех-Админ', tier: 6, color: '#06b6d4', perms: ['access_mod_panel', 'manage_store', 'view_logs', 'edit_balance', 'access_archive'] },
-                { id: 'kurator', label: 'Куратор', tier: 5, color: '#eab308', perms: ['access_mod_panel', 'view_logs', 'edit_balance', 'access_archive'] },
-                { id: 'GM', label: 'Гл. Модератор', tier: 4, color: '#a855f7', perms: ['access_mod_panel', 'view_logs', 'access_archive'] },
-                { id: 'gd', label: 'ГД', tier: 4, color: '#10b981', perms: ['access_mod_panel', 'view_logs', 'access_archive'] },
-                { id: 'ST-moderator', label: 'Ст-Модератор', tier: 3, color: '#6366f1', perms: ['access_mod_panel', 'view_logs', 'access_archive'] },
-                { id: 'moderator', label: 'Модератор', tier: 2, color: '#38bdf8', perms: ['access_mod_panel'] },
-                { id: 'helper', label: 'Хелпер', tier: 1, color: '#10b881', perms: [] }
-            ];
-            this.save();
-        }
-        
-        // Multi-Tenant Migration
-        if (!this.data.companies) {
-            this.data.companies = [{ id: 'comp_initial', name: 'Главный Сервер' }];
-            this.data.users.forEach(u => { if (!u.companyId) u.companyId = 'comp_initial'; });
-            this.data.codes.forEach(c => { if (!c.companyId) c.companyId = 'comp_initial'; });
-            this.data.items.forEach(i => { if (!i.companyId) i.companyId = 'comp_initial'; });
-            this.data.logs.forEach(l => { if (!l.companyId) l.companyId = 'comp_initial'; });
-            this.save();
-        }
-        
->>>>>>> 1e322d1 (Update site)
         if (!this.data.roles.find(r => r.id === PENDING_ROLE_ID)) {
             this.data.roles.unshift({ id: PENDING_ROLE_ID, label: 'Ожидание', tier: 0, color: '#f59e0b', perms: [] });
         }
@@ -1195,21 +1118,13 @@ class Database {
         this.data.items.forEach(i => {
             if (!i.itemType) i.itemType = 'item';
         });
-<<<<<<< HEAD
         
-=======
-        
->>>>>>> 1e322d1 (Update site)
         if (!this.data.systemConfig) {
             this.data.systemConfig = normalizeSystemConfig();
         } else {
             this.data.systemConfig = normalizeSystemConfig(this.data.systemConfig);
         }
-<<<<<<< HEAD
 
-=======
-
->>>>>>> 1e322d1 (Update site)
         this.data.companies.forEach(c => {
             if (c.accentColor === undefined) c.accentColor = '#8b5cf6';
             if (c.webhookUrl === undefined) c.webhookUrl = '';
@@ -1219,7 +1134,6 @@ class Database {
         
         this.ready = this.initRemote();
     }
-<<<<<<< HEAD
 
     async migrate() {
         let changed = false;
@@ -1236,24 +1150,6 @@ class Database {
         if (changed) this.save();
     }
 
-=======
-
-    async migrate() {
-        let changed = false;
-        // Hash any existing plain-text passwords
-        for (const u of this.data.users) {
-            // SHA-256 hashes are always 64 characters long in hex
-            const isHashed = /^[a-f0-9]{64}$/i.test(u.password);
-            if (!isHashed) {
-                console.log(`[Security] Migrating password for ${u.username}...`);
-                u.password = await hashPassword(u.password);
-                changed = true;
-            }
-        }
-        if (changed) this.save();
-    }
-
->>>>>>> 1e322d1 (Update site)
     async initRemote() {
         await this.migrate();
         if (USE_SERVER_DATABASE_SYNC) {
@@ -1288,11 +1184,7 @@ class Database {
             return;
         }
     }
-<<<<<<< HEAD
 
-=======
-
->>>>>>> 1e322d1 (Update site)
     load() {
         if (!USE_LOCAL_STORAGE_CACHE) {
             this.data = null;
@@ -1303,17 +1195,10 @@ class Database {
             this.data = stored ? JSON.parse(stored) : null;
         } catch (e) {
             console.error("localStorage error", e);
-<<<<<<< HEAD
             this.data = null;
         }
     }
 
-=======
-            this.data = null;
-        }
-    }
-
->>>>>>> 1e322d1 (Update site)
     saveLocal() {
         if (!USE_LOCAL_STORAGE_CACHE) {
             try {
@@ -1329,11 +1214,7 @@ class Database {
         }
         this.scheduleRemoteSave();
     }
-<<<<<<< HEAD
 
-=======
-
->>>>>>> 1e322d1 (Update site)
     async loadRemote() {
         if (!USE_SERVER_DATABASE_SYNC) {
             throw new Error('Remote sync is disabled');
@@ -1407,11 +1288,7 @@ class Database {
         this.scheduleRemoteSave();
         return Promise.resolve();
     }
-<<<<<<< HEAD
 
-=======
-
->>>>>>> 1e322d1 (Update site)
     generateId() {
         return Math.random().toString(36).substr(2, 9);
     }
@@ -1449,11 +1326,7 @@ class Database {
         this.touchData(false);
     }
 }
-<<<<<<< HEAD
 
-=======
-
->>>>>>> 1e322d1 (Update site)
 const db = new Database();
 const tableGateway = new SupabaseTableGateway();
 const authGateway = new SupabaseAuthGateway();
@@ -1465,11 +1338,7 @@ let expandedPurchaseLogIds = new Set();
 let isServerSwitcherOpen = false;
 let selectedStaffProfileUserId = null;
 const STAFF_PROFILE_STORAGE_KEY = 'staff_profile_user_id';
-<<<<<<< HEAD
 
-=======
-
->>>>>>> 1e322d1 (Update site)
 async function initApp() {
     await db.ready;
     if (!USE_SUPABASE_AUTH) {
@@ -1511,11 +1380,7 @@ async function initApp() {
     renderRoute();
     showPendingReloadToast();
 }
-<<<<<<< HEAD
 
-=======
-
->>>>>>> 1e322d1 (Update site)
 function renderRoute() {
     const root = document.getElementById('appRoot');
     root.innerHTML = '';
@@ -1532,11 +1397,7 @@ function renderRoute() {
         renderDashboard(root);
     }
 }
-<<<<<<< HEAD
 
-=======
-
->>>>>>> 1e322d1 (Update site)
 window.addEventListener('hashchange', renderRoute);
 
 function getCursorTooltip() {
@@ -1694,13 +1555,8 @@ function renderLogin(root) {
                 '</div>',
             '</div>',
         '</div>'
-<<<<<<< HEAD
     ].join('');
 
-=======
-    ].join('');
-
->>>>>>> 1e322d1 (Update site)
     document.getElementById('loginForm').onsubmit = async (e) => {
         e.preventDefault();
         const identity = document.getElementById('l_username').value.trim();
@@ -1789,7 +1645,6 @@ function renderForcedPasswordSetup(root) {
         };
     }
 }
-<<<<<<< HEAD
 
 function renderRegister(root) {
     root.innerHTML = [
@@ -1813,31 +1668,6 @@ function renderRegister(root) {
                 '</div>',
             '</div>',
         '</div>'
-=======
-
-function renderRegister(root) {
-    root.innerHTML = [
-        '<div class="auth-container">',
-            '<div class="glass-panel">',
-                '<h2>Регистрация в Nexus</h2>',
-                '<p class="subtitle">Используйте инвайт-код для активации вашего аккаунта.</p>',
-                '<form id="registerForm">',
-                    '<div class="form-group">',
-                        '<label>Инвайт-Код</label>',
-                        '<input type="text" id="r_code" class="form-control" required autocomplete="off">',
-                    '</div>',
-                    '<div class="form-group">',
-                        '<label>Задайте новый пароль</label>',
-                        '<input type="password" id="r_password" class="form-control" required>',
-                    '</div>',
-                    '<button type="submit" class="btn btn-primary">Активировать Аккаунт</button>',
-                '</form>',
-                '<div class="switch-auth">',
-                    'Уже есть аккаунт? <a href="#">Назад ко входу</a>',
-                '</div>',
-            '</div>',
-        '</div>'
->>>>>>> 1e322d1 (Update site)
     ].join('');
 
     document.getElementById('registerForm').onsubmit = async (e) => {
@@ -1937,13 +1767,9 @@ function renderRegister(root) {
           finalizeActivationLogin(reservedUser, targetUn);
       };
   }
-<<<<<<< HEAD
 
-=======
-
->>>>>>> 1e322d1 (Update site)
 window.switchAdminCompany = (newCompId) => {
-    const isWebsiteAdmin = hasPermission('access_global_hub');
+    const isWebsiteAdmin = hasGlobalControlAccess();
     const myAllowed = isWebsiteAdmin
         ? (currentUser.authorizedCompanies || [currentUser.companyId])
         : getUserActiveCompanies(currentUser);
@@ -1963,11 +1789,7 @@ window.switchAdminCompany = (newCompId) => {
 
     currentCompanyId = newCompId;
     sessionStorage.setItem('admin_context_company', newCompId);
-<<<<<<< HEAD
     
-=======
-    
->>>>>>> 1e322d1 (Update site)
     // Clear any active cart items
     if (currentUser) {
         currentUser.cart = [];
@@ -2043,7 +1865,7 @@ function canOpenDashboardTarget(target, isWebsiteAdmin) {
 function renderDashboard(root) {
     refreshCurrentUserReference();
     const isHighMod = hasPermission('access_mod_panel');
-    const isWebsiteAdmin = hasPermission('access_global_hub');
+    const isWebsiteAdmin = hasGlobalControlAccess();
     const myAllowed = isWebsiteAdmin
         ? (currentUser.authorizedCompanies || [currentUser.companyId])
         : getUserActiveCompanies(currentUser);
@@ -2079,11 +1901,7 @@ function renderDashboard(root) {
             '</div>'
         ].join('');
     }
-<<<<<<< HEAD
 
-=======
-
->>>>>>> 1e322d1 (Update site)
     const currentCompanyDb = db.data.companies.find(c => c.id === currentCompanyId);
 
     const eUsername = escapeHTML(currentUser.username);
@@ -2091,13 +1909,8 @@ function renderDashboard(root) {
     const securityBanner = '';
     root.innerHTML = [
         '<div class="dashboard-layout">',
-<<<<<<< HEAD
             '<aside class="sidebar">',
                 '<div class="sidebar-brand" style="font-size:1.2rem;">ModShop · ' + eCompName + '</div>',
-=======
-            '<aside class="sidebar">',
-                '<div class="sidebar-brand" style="font-size:1.2rem;">ModShop · ' + eCompName + '</div>',
->>>>>>> 1e322d1 (Update site)
                 '<nav id="navMenu">',
                     '<a class="nav-link active" data-target="profile">Профиль</a>',
                     '<a class="nav-link" data-target="store">Магазин</a>',
@@ -2107,11 +1920,7 @@ function renderDashboard(root) {
                     hasPermission('access_archive') ? '<a class="nav-link" data-target="archive" style="color:#94a3b8">Архив</a>' : '',
                     isWebsiteAdmin ? '<a class="nav-link" data-target="globalctrl" style="color:var(--secondary)">Гл. Управление</a>' : '',
                 '</nav>',
-<<<<<<< HEAD
             '</aside>',
-=======
-            '</aside>',
->>>>>>> 1e322d1 (Update site)
             '<main class="main-content">',
                 '<div class="topbar-shell">',
                     '<div class="topbar">',
@@ -2134,13 +1943,8 @@ function renderDashboard(root) {
                 '<div id="dashboardContent"></div>',
             '</main>',
         '</div>'
-<<<<<<< HEAD
     ].join('');
 
-=======
-    ].join('');
-
->>>>>>> 1e322d1 (Update site)
     document.getElementById('logoutBtn').onclick = async () => {
         const authSession = authGateway.getStoredSession();
         if (authSession && authSession.access_token) {
@@ -2154,11 +1958,7 @@ function renderDashboard(root) {
         showToast('Вы успешно вышли');
         renderRoute();
     };
-<<<<<<< HEAD
 
-=======
-
->>>>>>> 1e322d1 (Update site)
     const links = document.querySelectorAll('.nav-link');
     const content = getDashboardContent();
 
@@ -2185,11 +1985,7 @@ function renderDashboard(root) {
         await syncDashboardTabData(target);
         renderDashboardTab(target, content, isWebsiteAdmin);
     };
-<<<<<<< HEAD
 
-=======
-
->>>>>>> 1e322d1 (Update site)
     links.forEach(l => {
         l.onclick = () => { switchTab(l.getAttribute('data-target')); };
     });
@@ -2237,7 +2033,6 @@ function getRoleLabel(roleId) {
     const role = db.data.roles.find(x => x.id === roleId);
     return role ? role.label : roleId;
 }
-<<<<<<< HEAD
 
 function getAccountStatusBadge(user) {
     const isWaiting = user.accountStatus === 'ожидание' || user.isPendingActivation;
@@ -2254,24 +2049,6 @@ function getItemTypeBadge(itemType) {
     return '<span class="badge" style="background:rgba(16, 185, 129, 0.12); border:1px solid #10b981; color:#86efac">Предмет</span>';
 }
 
-=======
-
-function getAccountStatusBadge(user) {
-    const isWaiting = user.accountStatus === 'ожидание' || user.isPendingActivation;
-    if (isWaiting) {
-        return '<span class="badge" style="background:rgba(245, 158, 11, 0.12); border:1px solid #f59e0b; color:#f59e0b">Ожидание</span>';
-    }
-    return '<span class="badge" style="background:rgba(16, 185, 129, 0.12); border:1px solid #10b981; color:#10b981">Активен</span>';
-}
-
-function getItemTypeBadge(itemType) {
-    if (itemType === 'donate') {
-        return '<span class="badge" style="background:rgba(59, 130, 246, 0.12); border:1px solid #3b82f6; color:#93c5fd">Донат</span>';
-    }
-    return '<span class="badge" style="background:rgba(16, 185, 129, 0.12); border:1px solid #10b981; color:#86efac">Предмет</span>';
-}
-
->>>>>>> 1e322d1 (Update site)
 function normalizeAccentColor(value) {
     const raw = String(value || '').trim();
     return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : '#8b5cf6';
@@ -2378,17 +2155,10 @@ function buildPurchaseMentionIds(cartItems) {
         if (ci.itemObj.itemType === 'donate') {
             roleTargets.add('kurator');
             roleTargets.add('server_admin');
-<<<<<<< HEAD
         } else {
             roleTargets.add('ST-moderator');
             roleTargets.add('GM');
         }
-=======
-        } else {
-            roleTargets.add('ST-moderator');
-            roleTargets.add('GM');
-        }
->>>>>>> 1e322d1 (Update site)
     });
 
     const mentionIds = [];
@@ -2635,7 +2405,6 @@ function canManageUserReprimands(user) {
     const targetTier = getRoleTier(getEffectiveUserRoleForCompany(user, currentCompanyId));
     return myTier > targetTier;
 }
-<<<<<<< HEAD
 
 function renderAdmin(container) {
     renderUsers(container);
@@ -2645,14 +2414,3 @@ function renderAdmin(container) {
 
 
 
-=======
-
-function renderAdmin(container) {
-    renderUsers(container);
-}
-
-
-
-
-
->>>>>>> 1e322d1 (Update site)

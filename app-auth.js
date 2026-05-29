@@ -102,7 +102,7 @@ async function handleDiscordOAuthCallback() {
         if (mode === 'link' && currentUser && currentUser.id === linkUserId) {
             const conflictUser = findUserByDiscordId(discordId, currentUser.id);
             if (conflictUser) {
-                showToast('Этот Discord уже привязан к пользователю ' + conflictUser.username + '.', 'error');
+                showToast('Discord используется другим пользователем.', 'error');
                 return true;
             }
             currentUser.discordId = discordId;
@@ -235,7 +235,7 @@ window.saveDiscordLink = async () => {
     }
     const conflictUser = findUserByDiscordId(normalized, currentUser.id);
     if (conflictUser) {
-        showToast('Этот Discord уже привязан к пользователю ' + conflictUser.username + '.', 'error');
+        showToast('Discord используется другим пользователем.', 'error');
         return;
     }
 
