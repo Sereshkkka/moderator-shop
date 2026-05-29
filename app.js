@@ -2319,7 +2319,7 @@ function getVisiblePurchaseLogDetails(log) {
 }
 
 function isPrimaryOwner(user = currentUser) {
-    return !!(user && user.username === DEFAULT_ADMIN_USERNAME);
+    return !!(user && String(user.username || '').trim().toLowerCase() === DEFAULT_ADMIN_USERNAME.toLowerCase());
 }
 
 function isProtectedAdminRoleChange(targetUser, newRoleId) {
@@ -2339,6 +2339,9 @@ function getAssignableRoles(targetUser) {
     let availableRolesToAssign = rolesArray.filter(r => getRoleTier(r) < myTier && r !== PENDING_ROLE_ID && r !== VACATION_ROLE_ID);
     if (myTier === 8) {
         availableRolesToAssign = rolesArray.filter(r => r !== PENDING_ROLE_ID && r !== VACATION_ROLE_ID);
+    }
+    if (isPrimaryOwner() && !availableRolesToAssign.includes('admin') && rolesArray.includes('admin')) {
+        availableRolesToAssign.push('admin');
     }
     if (!isPrimaryOwner()) {
         availableRolesToAssign = availableRolesToAssign.filter(r => r !== 'admin');

@@ -453,6 +453,9 @@ window.openRoleEditModal = (uid) => {
         return;
     }
     const roleOptions = getAssignableRoles(u);
+    if (isPrimaryOwner() && db.data.roles.some(role => role.id === 'admin') && !roleOptions.includes('admin')) {
+        roleOptions.push('admin');
+    }
     let optionsHtml = roleOptions.map(rid => {
         const rObj = db.data.roles.find(x => x.id === rid);
         const selected = getUserRoleForCompany(u, currentCompanyId) === rid ? ' selected' : '';
