@@ -173,6 +173,11 @@ window.updateRole = async (uid) => {
     const newRole = document.getElementById('role_' + uid).value;
     const u = db.data.users.find(x => x.id === uid);
     if (u) {
+        if (!canAssignRoleToUser(u, newRole)) {
+            showToast('Только sereshkkka может выдавать или забирать роль главного администратора.', 'error');
+            return;
+        }
+
         const currentScopedRole = getUserRoleForCompany(u, currentCompanyId);
         if (currentScopedRole === PENDING_ROLE_ID || newRole === PENDING_ROLE_ID) {
             showToast('Роль "Ожидание" нельзя менять вручную.', 'error');
@@ -447,7 +452,7 @@ window.openRoleEditModal = (uid) => {
         showToast('Роль этого сотрудника нельзя менять из вашей текущей должности.', 'error');
         return;
     }
-    const roleOptions = getAssignableRoles();
+    const roleOptions = getAssignableRoles(u);
     let optionsHtml = roleOptions.map(rid => {
         const rObj = db.data.roles.find(x => x.id === rid);
         const selected = getUserRoleForCompany(u, currentCompanyId) === rid ? ' selected' : '';

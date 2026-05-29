@@ -1232,7 +1232,10 @@ class Database {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ snapshot: this.data })
+            body: JSON.stringify({
+                snapshot: this.data,
+                actorUserId: currentUser && currentUser.id ? currentUser.id : null
+            })
         });
         if (!response.ok) {
             const payload = await response.json().catch(() => ({}));
@@ -2315,13 +2318,33 @@ function getVisiblePurchaseLogDetails(log) {
     return log.purchaseDetails;
 }
 
+function isPrimaryOwner(user = currentUser) {
+    return !!(user && user.username === DEFAULT_ADMIN_USERNAME);
+}
 
-function getAssignableRoles() {
+function isProtectedAdminRoleChange(targetUser, newRoleId) {
+    const currentRoleId = targetUser ? getUserRoleForCompany(targetUser, currentCompanyId) : '';
+    return currentRoleId === 'admin' || newRoleId === 'admin';
+}
+
+function canAssignRoleToUser(targetUser, roleId) {
+    if (!targetUser) return false;
+    if (isProtectedAdminRoleChange(targetUser, roleId) && !isPrimaryOwner()) return false;
+    return getAssignableRoles(targetUser).includes(roleId);
+}
+
+function getAssignableRoles(targetUser) {
     const rolesArray = [...db.data.roles].sort((a, b) => a.tier - b.tier).map(r => r.id);
     const myTier = getRoleTier(getCurrentUserRoleId());
     let availableRolesToAssign = rolesArray.filter(r => getRoleTier(r) < myTier && r !== PENDING_ROLE_ID && r !== VACATION_ROLE_ID);
     if (myTier === 8) {
-        availableRolesToAssign = rolesArray.filter(r => getRoleTier(r) < 8 && r !== PENDING_ROLE_ID && r !== VACATION_ROLE_ID);
+        availableRolesToAssign = rolesArray.filter(r => r !== PENDING_ROLE_ID && r !== VACATION_ROLE_ID);
+    }
+    if (!isPrimaryOwner()) {
+        availableRolesToAssign = availableRolesToAssign.filter(r => r !== 'admin');
+        if (targetUser && getUserRoleForCompany(targetUser, currentCompanyId) === 'admin') {
+            return [];
+        }
     }
     return availableRolesToAssign;
 }
@@ -2338,6 +2361,7 @@ function canManageUserRole(user) {
     if (user.id === currentUser.id) return false;
     if (getUserRoleForCompany(user, currentCompanyId) === PENDING_ROLE_ID) return false;
     if (isUserOnVacation(user, currentCompanyId)) return false;
+    if (getUserRoleForCompany(user, currentCompanyId) === 'admin' && !isPrimaryOwner()) return false;
     const myTier = getRoleTier(getCurrentUserRoleId());
     const userTier = getRoleTier(getEffectiveUserRoleForCompany(user, currentCompanyId));
     return myTier === 8 ? true : userTier < myTier;

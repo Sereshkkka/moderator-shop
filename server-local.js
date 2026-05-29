@@ -298,9 +298,11 @@ async function ensureDatabaseCompat() {
   `);
 }
 
-async function saveSnapshotToDatabase(snapshot) {
+async function saveSnapshotToDatabase(snapshot, actorUserId) {
   const client = await pool.connect();
   try {
+    const existingUsersResult = await client.query('select id, username, role_id, server_roles from users');
+    const existingUsers = new Map(existingUsersResult.rows.map((row) => [row.id, row]));
     const companies = uniqueBy(snapshot.companies || [], (item) => item.id);
     const roles = uniqueBy(snapshot.roles || [], (item) => item.id);
     const users = uniqueBy(snapshot.users || [], (item) => item.id || item.username);
@@ -308,6 +310,31 @@ async function saveSnapshotToDatabase(snapshot) {
     const items = uniqueBy(snapshot.items || [], (item) => item.id);
     const logs = uniqueBy(snapshot.logs || [], (item) => item.id);
     const userIds = new Set(users.map((user) => user.id).filter(Boolean));
+    const actorFromExisting = actorUserId ? existingUsers.get(actorUserId) : null;
+    const actorFromSnapshot = actorUserId ? users.find((user) => user.id === actorUserId) : null;
+    const isPrimaryOwnerActor =
+      (actorFromExisting && actorFromExisting.username === 'sereshkkka') ||
+      (actorFromSnapshot && actorFromSnapshot.username === 'sereshkkka');
+
+    for (const user of users) {
+      if (user.username === 'sereshkkka') continue;
+      const existingUser = existingUsers.get(user.id);
+      if (!existingUser) continue;
+
+      const existingServerRoles = existingUser.server_roles && typeof existingUser.server_roles === 'object'
+        ? existingUser.server_roles
+        : {};
+      const nextServerRoles = user.companyRoles && typeof user.companyRoles === 'object'
+        ? user.companyRoles
+        : {};
+      const existingHasAdmin = existingUser.role_id === 'admin' || Object.values(existingServerRoles).includes('admin');
+      const nextHasAdmin = user.role === 'admin' || Object.values(nextServerRoles).includes('admin');
+
+      if (existingHasAdmin !== nextHasAdmin && !isPrimaryOwnerActor) {
+        user.role = existingUser.role_id;
+        user.companyRoles = { ...existingServerRoles };
+      }
+    }
 
     await client.query('begin');
 
@@ -508,7 +535,7 @@ async function handleApi(req, res, pathname) {
     }
     try {
       const body = await parseRequestBody(req);
-      await saveSnapshotToDatabase(body.snapshot || {});
+      await saveSnapshotToDatabase(body.snapshot || {}, body.actorUserId || null);
       sendJson(res, 200, { ok: true });
     } catch (error) {
       sendJson(res, 500, { ok: false, error: error.message });
