@@ -227,9 +227,13 @@ function renderHighMod(container) {
 function renderLogs(container) {
     const scopedLogs = db.data.logs.filter(l => l.companyId === currentCompanyId);
     const sortedLogs = [...scopedLogs].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const isBalanceLog = (log) => log.type === 'Store Purchase' || Number(log.newBalance || 0) !== Number(log.oldBalance || 0);
+    const activeLogCategory = sessionStorage.getItem('logs_category') || 'balance';
+    const categoryLogs = sortedLogs.filter(log => activeLogCategory === 'admin' ? !isBalanceLog(log) : isBalanceLog(log));
 
     const canDeleteLog = hasPermission('all');
     const canClearLogs = canClearCurrentCompanyLogs();
+    const showImpact = activeLogCategory !== 'admin';
     const actionHeader = canDeleteLog ? '<th>Действие</th>' : '';
     const currentCompany = db.data.companies.find(c => c.id === currentCompanyId);
     const companyName = currentCompany ? currentCompany.name : 'текущего сервера';
@@ -245,15 +249,19 @@ function renderLogs(container) {
             '</div>',
             clearButtonHtml,
         '</div>',
+        '<div class="tab-bar mb-3">',
+            '<div class="tab-header ' + (activeLogCategory === 'balance' ? 'active' : '') + '" data-log-category="balance">Баланс</div>',
+            '<div class="tab-header ' + (activeLogCategory === 'admin' ? 'active' : '') + '" data-log-category="admin">Администрирование</div>',
+        '</div>',
         '<div class="table-container">',
             '<table>',
                 '<thead>',
                     '<tr>',
                         '<th>Дата/Время</th>',
                         '<th>Категория</th>',
-                        '<th>Владелец</th>',
-                        '<th>Возмутитель</th>',
-                        '<th>Импакт</th>',
+                        '<th>Применено к</th>',
+                        '<th>Исполнитель</th>',
+                        showImpact ? '<th>Импакт</th>' : '',
                         '<th>Лог / Детали</th>',
                         actionHeader,
                     '</tr>',
@@ -261,7 +269,7 @@ function renderLogs(container) {
                 '<tbody>'
     ].join('');
 
-    let rowsHtml = sortedLogs.map(l => {
+    let rowsHtml = categoryLogs.map(l => {
         const targetObj = db.data.users.find(u => u.id === l.userId);
         let target = targetObj ? targetObj.username : 'Неизвестно';
 
@@ -303,7 +311,7 @@ function renderLogs(container) {
         const detailRowHtml = purchaseDetails && isExpanded
             ? [
                 '<tr class="log-details-row">',
-                    '<td colspan="' + (canDeleteLog ? '7' : '6') + '">',
+                    '<td colspan="' + ((showImpact ? 6 : 5) + (canDeleteLog ? 1 : 0)) + '">',
                         '<div class="log-details-panel">',
                             '<div class="log-details-title">Состав покупки</div>',
                             '<div class="log-details-list">',
@@ -326,7 +334,7 @@ function renderLogs(container) {
                 '<td>' + typeBadge + '</td>',
                 '<td>' + eTarget + '</td>',
                 '<td>' + eMod + '</td>',
-                '<td style="color:' + color + '; font-weight:bold">' + diffStr + '</td>',
+                showImpact ? '<td style="color:' + color + '; font-weight:bold">' + diffStr + '</td>' : '',
                 '<td>' + detailsControl + escapeHTML(l.reason) + '</td>',
                 actionCell,
             '</tr>',
@@ -334,12 +342,19 @@ function renderLogs(container) {
         ].join('');
     }).join('');
 
-    if (sortedLogs.length === 0) {
-        rowsHtml = '<tr><td colspan="' + (canDeleteLog ? '7' : '6') + '">В базе данных текущего сервера еще нет транзакций.</td></tr>';
+    if (categoryLogs.length === 0) {
+        rowsHtml = '<tr><td colspan="' + ((showImpact ? 6 : 5) + (canDeleteLog ? 1 : 0)) + '">В этой категории пока нет записей.</td></tr>';
     }
 
     htmlStr += rowsHtml + '</tbody></table></div>';
     container.innerHTML = htmlStr;
+
+    container.querySelectorAll('[data-log-category]').forEach(tab => {
+        tab.onclick = () => {
+            sessionStorage.setItem('logs_category', tab.dataset.logCategory);
+            renderLogs(container);
+        };
+    });
 
     window.deleteLog = (logId) => {
         expandedPurchaseLogIds.delete(logId);
