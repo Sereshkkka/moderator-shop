@@ -231,6 +231,7 @@ window.updateRole = async (uid) => {
 window.archiveUser = (uid) => {
     const u = db.data.users.find(x => x.id === uid);
     if (!u) return;
+    const isPendingUser = !!u.isPendingActivation;
 
     if (u.id === currentUser.id) {
         showToast('Вы не можете архивировать самого себя!', 'error');
@@ -242,8 +243,8 @@ window.archiveUser = (uid) => {
     modalWrapper.innerHTML = [
         '<div class="modal-overlay" id="bm_overlay">',
             '<div class="modal-content" onclick="event.stopPropagation()">',
-                '<h3 style="margin-bottom:1.5rem">Снятие с должности</h3>',
-                '<p style="margin-bottom:1.5rem; line-height:1.5;">Пользователь будет деактивирован и помещен в архив. Продолжить?</p>',
+                '<h3 style="margin-bottom:1.5rem">' + (isPendingUser ? 'Деактивация приглашения' : 'Снятие с должности') + '</h3>',
+                '<p style="margin-bottom:1.5rem; line-height:1.5;">' + (isPendingUser ? 'Неактивированный аккаунт и его код приглашения будут деактивированы без отправки webhook. Продолжить?' : 'Пользователь будет деактивирован и помещен в архив. Продолжить?') + '</p>',
                 '<div class="action-row mt-4">',
                     '<button class="btn btn-danger" onclick="executeArchiveUser(\'' + u.id + '\')">Подтвердить</button>',
                     '<button class="btn btn-outline" onclick="closeBalanceModal()">Отмена</button>',
@@ -258,6 +259,7 @@ window.archiveUser = (uid) => {
 window.executeArchiveUser = async (uid) => {
     const u = db.data.users.find(x => x.id === uid);
     if (u) {
+        const isPendingUser = !!u.isPendingActivation;
         const archivedUserSnapshot = {
             ...u,
             companyRoles: u.companyRoles ? { ...u.companyRoles } : {},
@@ -271,23 +273,41 @@ window.executeArchiveUser = async (uid) => {
                 return;
             }
             try {
-                await authGateway.rpcArchiveUser(authSession.access_token, {
-                    target_user_id: uid
-                });
+                if (isPendingUser && u.inviteCodeId) {
+                    await authGateway.rpcDeleteCode(authSession.access_token, {
+                        target_code_id: u.inviteCodeId
+                    });
+                } else {
+                    await authGateway.rpcArchiveUser(authSession.access_token, {
+                        target_user_id: uid
+                    });
+                }
                 await syncStaffReadSnapshot();
                 closeBalanceModal();
-                showToast('Пользователь отправлен в архив через безопасный server-side RPC.');
+                showToast(isPendingUser ? 'Приглашение деактивировано.' : 'Пользователь отправлен в архив через безопасный server-side RPC.');
                 const content = getDashboardContent();
                 if (content) renderUsers(content);
-                sendArchiveWebhook(archivedUserSnapshot, currentCompanyId, currentUser).catch((error) => {
-                    console.error('Archive webhook failed', error);
-                    showToast('Пользователь снят, но webhook не отправился.', 'error');
-                });
+                if (!isPendingUser) {
+                    sendArchiveWebhook(archivedUserSnapshot, currentCompanyId, currentUser).catch((error) => {
+                        console.error('Archive webhook failed', error);
+                        showToast('Пользователь снят, но webhook не отправился.', 'error');
+                    });
+                }
                 return;
             } catch (error) {
-                showToast(error.message || 'Не удалось архивировать пользователя через RPC.', 'error');
+                showToast(error.message || (isPendingUser ? 'Не удалось деактивировать приглашение через RPC.' : 'Не удалось архивировать пользователя через RPC.'), 'error');
                 return;
             }
+        }
+        if (isPendingUser && u.inviteCodeId) {
+            db.data.users = db.data.users.filter(user => user.id !== uid);
+            db.data.codes = db.data.codes.filter(code => code.id !== u.inviteCodeId);
+            db.save();
+            closeBalanceModal();
+            showToast('Приглашение деактивировано.');
+            const content = getDashboardContent();
+            if (content) renderUsers(content);
+            return;
         }
         const archivedCompanies = ensureUserArchivedCompanies(u);
         archivedCompanies[currentCompanyId] = true;
@@ -307,10 +327,12 @@ window.executeArchiveUser = async (uid) => {
         showToast('Пользователь ' + u.username + ' отправлен в архив на текущем сервере');
         const content = getDashboardContent();
         if (content) renderUsers(content);
-        sendArchiveWebhook(archivedUserSnapshot, currentCompanyId, currentUser).catch((error) => {
-            console.error('Archive webhook failed', error);
-            showToast('Пользователь снят, но webhook не отправился.', 'error');
-        });
+        if (!isPendingUser) {
+            sendArchiveWebhook(archivedUserSnapshot, currentCompanyId, currentUser).catch((error) => {
+                console.error('Archive webhook failed', error);
+                showToast('Пользователь снят, но webhook не отправился.', 'error');
+            });
+        }
     }
 };
 

@@ -252,6 +252,13 @@ function renderStaffProfile(container, targetUser) {
     const reprimandCount = getUserReprimandCount(targetUser, currentCompanyId);
     const eUsername = escapeHTML(targetUser.username);
     const currentRoleLabel = escapeHTML(getRoleLabel(targetRoleId));
+    const pendingInviteCode = targetUser.isPendingActivation
+        ? db.data.codes.find(c => c.id === targetUser.inviteCodeId)
+            || db.data.codes.find(c => c.companyId === currentCompanyId && c.targetUsername === targetUser.username && !c.isUsed)
+        : null;
+    const pendingInviteCodeRow = targetUser.isPendingActivation
+        ? '<div class="profile-stat-row"><span>Код приглашения</span><div class="profile-stat-value-wrap"><strong style="font-family:monospace; letter-spacing:0.04em;">' + escapeHTML(pendingInviteCode ? pendingInviteCode.code : 'Н/Д') + '</strong></div></div>'
+        : '';
 
     const userLogs = [...db.data.logs]
         .filter(l => l.companyId === currentCompanyId)
@@ -311,7 +318,7 @@ function renderStaffProfile(container, targetUser) {
         : '<div class="text-muted">Discord не привязан</div>';
 
     const actionButtons = [
-        canArchive ? '<button class="btn btn-danger" onclick="archiveUser(\'' + targetUser.id + '\')">Снять</button>' : '',
+        canArchive ? '<button class="btn btn-danger" onclick="archiveUser(\'' + targetUser.id + '\')">' + (targetUser.isPendingActivation ? 'Деактивировать' : 'Снять') + '</button>' : '',
         canResetPassword ? '<button class="btn btn-outline" onclick="openResetPasswordModal(\'' + targetUser.id + '\')">Сбросить пароль</button>' : ''
     ].filter(Boolean).join('');
 
@@ -335,6 +342,7 @@ function renderStaffProfile(container, targetUser) {
                         '<div class="profile-role-badge">' + getBadge(targetRoleId) + (targetUser.isPendingActivation ? getAccountStatusBadge(targetUser) : '') + '</div>',
                     '</div>',
                     '<div class="profile-stat-stack">',
+                        pendingInviteCodeRow,
                         '<div class="profile-stat-row"><span>Должность</span><div class="profile-stat-value-wrap"><strong>' + currentRoleLabel + '</strong>' + roleEditButton + '</div></div>',
                         '<div class="profile-stat-row"><span>Выговоры</span><div class="profile-stat-value-wrap"><strong>' + reprimandCount + '</strong>' + reprimandControls + '</div></div>',
                         '<div class="profile-stat-row profile-stat-balance"><span>Баланс</span><div class="profile-stat-value-wrap"><strong>' + targetUser.coins + ' монет</strong>' + balanceEditButton + '</div></div>',
