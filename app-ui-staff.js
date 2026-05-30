@@ -252,9 +252,6 @@ function renderStaffProfile(container, targetUser) {
     const reprimandCount = getUserReprimandCount(targetUser, currentCompanyId);
     const eUsername = escapeHTML(targetUser.username);
     const currentRoleLabel = escapeHTML(getRoleLabel(targetRoleId));
-    const pendingStatusRow = targetUser.isPendingActivation
-        ? '<div class="profile-stat-row"><span>Статус</span><div class="profile-stat-value-wrap">' + getAccountStatusBadge(targetUser) + '</div></div>'
-        : '';
 
     const userLogs = [...db.data.logs]
         .filter(l => l.companyId === currentCompanyId)
@@ -338,7 +335,6 @@ function renderStaffProfile(container, targetUser) {
                         '<div class="profile-role-badge">' + getBadge(targetRoleId) + (targetUser.isPendingActivation ? getAccountStatusBadge(targetUser) : '') + '</div>',
                     '</div>',
                     '<div class="profile-stat-stack">',
-                        pendingStatusRow,
                         '<div class="profile-stat-row"><span>Должность</span><div class="profile-stat-value-wrap"><strong>' + currentRoleLabel + '</strong>' + roleEditButton + '</div></div>',
                         '<div class="profile-stat-row"><span>Выговоры</span><div class="profile-stat-value-wrap"><strong>' + reprimandCount + '</strong>' + reprimandControls + '</div></div>',
                         '<div class="profile-stat-row profile-stat-balance"><span>Баланс</span><div class="profile-stat-value-wrap"><strong>' + targetUser.coins + ' монет</strong>' + balanceEditButton + '</div></div>',
