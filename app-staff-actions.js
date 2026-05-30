@@ -302,6 +302,7 @@ window.executeArchiveUser = async (uid) => {
         if (isPendingUser && u.inviteCodeId) {
             db.data.users = db.data.users.filter(user => user.id !== uid);
             db.data.codes = db.data.codes.filter(code => code.id !== u.inviteCodeId);
+            db.data.logs = db.data.logs.filter(log => log.userId !== uid && log.modifierId !== uid);
             db.save();
             closeBalanceModal();
             showToast('Приглашение деактивировано.');

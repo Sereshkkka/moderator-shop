@@ -314,6 +314,7 @@ async function saveSnapshotToDatabase(snapshot, actorUserId) {
     const items = uniqueBy(snapshot.items || [], (item) => item.id);
     const logs = uniqueBy(snapshot.logs || [], (item) => item.id);
     const userIds = new Set(users.map((user) => user.id).filter(Boolean));
+    const companyIds = new Set(companies.map((company) => company.id).filter(Boolean));
     const actorFromExisting = actorUserId ? existingUsers.get(actorUserId) : null;
     const actorFromSnapshot = actorUserId ? users.find((user) => user.id === actorUserId) : null;
     const isPrimaryOwnerActor =
@@ -422,9 +423,17 @@ async function saveSnapshotToDatabase(snapshot, actorUserId) {
     }
 
     for (const log of logs) {
+      const logUserId = log.userId || null;
+      const logModifierId = log.modifierId || null;
+      if ((logUserId && !userIds.has(logUserId)) || (logModifierId && !userIds.has(logModifierId))) {
+        continue;
+      }
+      if (log.companyId && !companyIds.has(log.companyId)) {
+        continue;
+      }
       await client.query(
         'insert into logs (id, user_id, modifier_id, company_id, old_balance, new_balance, type, reason, purchase_details, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, coalesce($10::timestamptz, now()))',
-        [log.id, log.userId || null, log.modifierId || null, log.companyId, log.oldBalance || 0, log.newBalance || 0, log.type, log.reason || '', JSON.stringify(log.purchaseDetails || null), log.date || null]
+        [log.id, logUserId, logModifierId, log.companyId, log.oldBalance || 0, log.newBalance || 0, log.type, log.reason || '', JSON.stringify(log.purchaseDetails || null), log.date || null]
       );
     }
 
