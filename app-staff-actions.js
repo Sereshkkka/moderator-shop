@@ -244,10 +244,10 @@ window.archiveUser = (uid) => {
         '<div class="modal-overlay" id="bm_overlay">',
             '<div class="modal-content" onclick="event.stopPropagation()">',
                 '<h3 style="margin-bottom:1.5rem">' + (isPendingUser ? 'Деактивация приглашения' : 'Снятие с должности') + '</h3>',
-                '<p style="margin-bottom:1.5rem; line-height:1.5;">' + (isPendingUser ? 'Неактивированный аккаунт и его код приглашения будут деактивированы без отправки webhook. Продолжить?' : 'Пользователь будет деактивирован и помещен в архив. Продолжить?') + '</p>',
+                '<p style="margin-bottom:1.5rem; line-height:1.5;">' + (isPendingUser ? 'Деактивировать код пользователя?' : 'Пользователь будет деактивирован и помещен в архив. Продолжить?') + '</p>',
                 '<div class="action-row mt-4">',
-                    '<button class="btn btn-danger" onclick="executeArchiveUser(\'' + u.id + '\')">Подтвердить</button>',
-                    '<button class="btn btn-outline" onclick="closeBalanceModal()">Отмена</button>',
+                    '<button class="btn btn-danger" onclick="executeArchiveUser(\'' + u.id + '\')">' + (isPendingUser ? 'Да' : 'Подтвердить') + '</button>',
+                    '<button class="btn btn-outline" onclick="closeBalanceModal()">' + (isPendingUser ? 'Нет' : 'Отмена') + '</button>',
                 '</div>',
             '</div>',
         '</div>'
