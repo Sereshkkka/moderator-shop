@@ -462,9 +462,14 @@ function sendFile(res, filePath) {
       return;
     }
     const ext = path.extname(filePath).toLowerCase();
+    const fileName = path.basename(filePath).toLowerCase();
+    const cacheControl = ext === '.html' || ext === '.js' || fileName === 'app-config.js'
+      ? 'no-store, no-cache, must-revalidate, proxy-revalidate'
+      : 'public, max-age=3600';
     res.writeHead(200, {
       'Content-Type': MIME_TYPES[ext] || 'application/octet-stream',
-      'Content-Length': body.length
+      'Content-Length': body.length,
+      'Cache-Control': cacheControl
     });
     res.end(body);
   });
