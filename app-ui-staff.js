@@ -39,12 +39,14 @@ function renderUsers(container) {
     const tiles = scopedUsers.map(u => {
         const eUsername = escapeHTML(u.username);
         const canOpenManagement = canManageUserBalance(u) || canManageUserRole(u) || canArchiveManagedUser(u) || u.id === currentUser.id;
+        const pendingStatusBadge = u.isPendingActivation ? getAccountStatusBadge(u) : '';
         return [
             '<button class="staff-tile' + (canOpenManagement ? '' : ' is-readonly') + '" onclick="openStaffProfileTab(\'' + u.id + '\')">',
             '<img src="' + getUserAvatarUrl(u.username, 32) + '" class="staff-tile-avatar" style="object-fit:cover; image-rendering:pixelated; background:transparent;">',
                 '<div class="staff-tile-name">' + eUsername + '</div>',
                 '<div class="staff-tile-badges">',
                     getBadge(getUserRoleForCompany(u, currentCompanyId)),
+                    pendingStatusBadge,
                 '</div>',
                 '<div class="staff-tile-meta">',
                     '<span>' + u.coins + ' монет</span>',
@@ -173,9 +175,9 @@ function renderUsers(container) {
                 username: targetUsername,
                 password: placeholderPassword,
                 coins: 0,
-                role: PENDING_ROLE_ID,
+                role: 'helper',
                 companyId: currentCompanyId,
-                companyRoles: { [currentCompanyId]: PENDING_ROLE_ID },
+                companyRoles: { [currentCompanyId]: 'helper' },
                 date: new Date().toISOString(),
                 cart: [],
                 discordId: '',
@@ -250,6 +252,9 @@ function renderStaffProfile(container, targetUser) {
     const reprimandCount = getUserReprimandCount(targetUser, currentCompanyId);
     const eUsername = escapeHTML(targetUser.username);
     const currentRoleLabel = escapeHTML(getRoleLabel(targetRoleId));
+    const pendingStatusRow = targetUser.isPendingActivation
+        ? '<div class="profile-stat-row"><span>Статус</span><div class="profile-stat-value-wrap">' + getAccountStatusBadge(targetUser) + '</div></div>'
+        : '';
 
     const userLogs = [...db.data.logs]
         .filter(l => l.companyId === currentCompanyId)
@@ -330,9 +335,10 @@ function renderStaffProfile(container, targetUser) {
             '<img src="' + getUserAvatarUrl(targetUser.username, 96) + '" class="avatar-large" style="object-fit:cover; image-rendering:pixelated; background:transparent;">',
                     '<div class="profile-identity">',
                         '<h3 class="profile-username">' + eUsername + '</h3>',
-                        '<div class="profile-role-badge">' + getBadge(targetRoleId) + '</div>',
+                        '<div class="profile-role-badge">' + getBadge(targetRoleId) + (targetUser.isPendingActivation ? getAccountStatusBadge(targetUser) : '') + '</div>',
                     '</div>',
                     '<div class="profile-stat-stack">',
+                        pendingStatusRow,
                         '<div class="profile-stat-row"><span>Должность</span><div class="profile-stat-value-wrap"><strong>' + currentRoleLabel + '</strong>' + roleEditButton + '</div></div>',
                         '<div class="profile-stat-row"><span>Выговоры</span><div class="profile-stat-value-wrap"><strong>' + reprimandCount + '</strong>' + reprimandControls + '</div></div>',
                         '<div class="profile-stat-row profile-stat-balance"><span>Баланс</span><div class="profile-stat-value-wrap"><strong>' + targetUser.coins + ' монет</strong>' + balanceEditButton + '</div></div>',

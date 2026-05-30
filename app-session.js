@@ -15,11 +15,15 @@ function upsertLocalUser(userData) {
             userData.mustChangePassword = true;
         }
         Object.assign(existingUser, userData);
+        if (existingUser.role === PENDING_ROLE_ID) existingUser.role = 'helper';
+        ensureUserCompanyRoles(existingUser);
         return existingUser;
     }
     if (userData.mustChangePassword === undefined) {
         userData.mustChangePassword = false;
     }
+    if (userData.role === PENDING_ROLE_ID) userData.role = 'helper';
+    ensureUserCompanyRoles(userData);
     db.data.users.push(userData);
     db.saveLocal();
     return userData;
@@ -131,7 +135,10 @@ async function syncStaffReadSnapshot() {
                 if (existing && existing.discordId && !user.discordId) {
                     user.discordId = existing.discordId;
                 }
-                return existing ? Object.assign(existing, user) : user;
+                const hydratedUser = existing ? Object.assign(existing, user) : user;
+                if (hydratedUser.role === PENDING_ROLE_ID) hydratedUser.role = 'helper';
+                ensureUserCompanyRoles(hydratedUser);
+                return hydratedUser;
             });
             db.data.users = hydratedRemoteUsers;
         }

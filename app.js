@@ -846,14 +846,12 @@ function ensureUserCompanyRoles(user) {
         accessList.unshift(user.companyId);
     }
 
-    const fallbackRole = user.isPendingActivation
-        ? PENDING_ROLE_ID
-        : ((user.role && user.role !== PENDING_ROLE_ID) ? user.role : 'helper');
+    const fallbackRole = (user.role && user.role !== PENDING_ROLE_ID) ? user.role : 'helper';
 
     accessList.forEach(companyId => {
         if (!user.companyRoles[companyId]) {
             user.companyRoles[companyId] = fallbackRole;
-        } else if (!user.isPendingActivation && user.companyRoles[companyId] === PENDING_ROLE_ID) {
+        } else if (user.companyRoles[companyId] === PENDING_ROLE_ID) {
             user.companyRoles[companyId] = fallbackRole;
         }
     });
@@ -938,7 +936,7 @@ function getUserRoleForCompany(user, companyId = currentCompanyId) {
     if (user.role === 'admin') return 'admin';
     if (companyId && companyRoles[companyId]) return companyRoles[companyId];
     if (user.companyId && companyRoles[user.companyId]) return companyRoles[user.companyId];
-    return user.isPendingActivation ? PENDING_ROLE_ID : (user.role || 'helper');
+    return user.role === PENDING_ROLE_ID ? 'helper' : (user.role || 'helper');
 }
 
 function getEffectiveUserRoleForCompany(user, companyId = currentCompanyId) {
@@ -1100,7 +1098,14 @@ class Database {
             }
             u.isArchived = false;
             if (!u.accountStatus) u.accountStatus = u.isPendingActivation ? 'ожидание' : 'активен';
-            if (u.isPendingActivation && u.role !== PENDING_ROLE_ID) u.role = PENDING_ROLE_ID;
+            if (u.role === PENDING_ROLE_ID) u.role = 'helper';
+            if (u.companyRoles && typeof u.companyRoles === 'object' && !Array.isArray(u.companyRoles)) {
+                Object.keys(u.companyRoles).forEach(companyId => {
+                    if (u.companyRoles[companyId] === PENDING_ROLE_ID) {
+                        u.companyRoles[companyId] = 'helper';
+                    }
+                });
+            }
             if (u.mustChangePassword === undefined) u.mustChangePassword = false;
             if (u.discordId === undefined) u.discordId = '';
             if (!u.vacationRoles || typeof u.vacationRoles !== 'object' || Array.isArray(u.vacationRoles)) u.vacationRoles = {};
@@ -2239,9 +2244,7 @@ function grantExistingUserAccessToCurrentServer(userId) {
     }
 
     existingUser.authorizedCompanies.push(currentCompanyId);
-    existingUser.companyRoles[currentCompanyId] = existingUser.isPendingActivation
-        ? PENDING_ROLE_ID
-        : 'helper';
+    existingUser.companyRoles[currentCompanyId] = 'helper';
     db.save();
 
     showToast('Пользователю ' + existingUser.username + ' выдан доступ к серверу ' + getCompanyNameById(currentCompanyId) + '.');
@@ -2366,7 +2369,6 @@ function canManageUserBalance(user) {
 function canManageUserRole(user) {
     if (!hasPermission('edit_roles')) return false;
     if (user.id === currentUser.id) return false;
-    if (getUserRoleForCompany(user, currentCompanyId) === PENDING_ROLE_ID) return false;
     if (isUserOnVacation(user, currentCompanyId)) return false;
     if (isPrimaryOwner()) return true;
     if (getUserRoleForCompany(user, currentCompanyId) === 'admin' && !isPrimaryOwner()) return false;
@@ -2382,7 +2384,7 @@ function canArchiveManagedUser(user) {
 function canResetManagedUserPassword(user) {
     if (!currentUser || !user) return false;
     if (user.id === currentUser.id) return false;
-    if (user.isPendingActivation || isUserArchivedOnCompany(user, currentCompanyId)) return false;
+    if (isUserArchivedOnCompany(user, currentCompanyId)) return false;
     const myTier = getRoleTier(getCurrentUserRoleId());
     const targetTier = getRoleTier(getEffectiveUserRoleForCompany(user, currentCompanyId));
     return myTier > 4 && targetTier < myTier;
@@ -2391,7 +2393,7 @@ function canResetManagedUserPassword(user) {
 function canManageVacation(user) {
     if (!currentUser || !user) return false;
     if (user.id === currentUser.id) return false;
-    if (user.isPendingActivation || isUserArchivedOnCompany(user, currentCompanyId)) return false;
+    if (isUserArchivedOnCompany(user, currentCompanyId)) return false;
     const myTier = getRoleTier(getCurrentUserRoleId());
     const targetTier = getRoleTier(getEffectiveUserRoleForCompany(user, currentCompanyId));
     return myTier > 3 && targetTier < myTier;
@@ -2400,7 +2402,7 @@ function canManageVacation(user) {
 function canManageUserReprimands(user) {
     if (!currentUser || !user) return false;
     if (user.id === currentUser.id) return false;
-    if (user.isPendingActivation || isUserArchivedOnCompany(user, currentCompanyId)) return false;
+    if (isUserArchivedOnCompany(user, currentCompanyId)) return false;
     const myTier = getRoleTier(getCurrentUserRoleId());
     const targetTier = getRoleTier(getEffectiveUserRoleForCompany(user, currentCompanyId));
     return myTier > targetTier;

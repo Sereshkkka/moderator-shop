@@ -80,14 +80,18 @@ function mapUserRow(row, accessRows) {
     if (!companyRoles[companyId]) {
       companyRoles[companyId] = row.role_id;
     }
+    if (companyRoles[companyId] === 'waiting') {
+      companyRoles[companyId] = 'helper';
+    }
   });
+  const roleId = row.role_id === 'waiting' ? 'helper' : row.role_id;
 
   return {
     id: row.id,
     username: row.username,
     password: row.password_hash,
     coins: row.coins || 0,
-    role: row.role_id,
+    role: roleId,
     companyId: row.company_id,
     date: row.created_at,
     cart: Array.isArray(row.cart) ? row.cart : [],

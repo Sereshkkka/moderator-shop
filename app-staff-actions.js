@@ -178,8 +178,7 @@ window.updateRole = async (uid) => {
             return;
         }
 
-        const currentScopedRole = getUserRoleForCompany(u, currentCompanyId);
-        if (currentScopedRole === PENDING_ROLE_ID || newRole === PENDING_ROLE_ID) {
+        if (newRole === PENDING_ROLE_ID) {
             showToast('Роль "Ожидание" нельзя менять вручную.', 'error');
             return;
         }

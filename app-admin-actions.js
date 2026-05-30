@@ -243,7 +243,7 @@ window.toggleUserAccess = (userId, companyId, isChecked) => {
             targetUser.authorizedCompanies.push(companyId);
         }
         if (!targetUser.companyRoles[companyId]) {
-            targetUser.companyRoles[companyId] = targetUser.isPendingActivation ? PENDING_ROLE_ID : 'helper';
+            targetUser.companyRoles[companyId] = 'helper';
         }
     } else {
         if (targetUser.authorizedCompanies.length <= 1) {
