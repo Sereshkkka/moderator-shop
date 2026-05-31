@@ -107,7 +107,8 @@ function refreshCurrentUserReference() {
 
 function getSelectedStaffProfileUser() {
     if (!selectedStaffProfileUserId) return null;
-    return db.data.users.find(u => u.id === selectedStaffProfileUserId) || null;
+    const selectedUser = db.data.users.find(u => u.id === selectedStaffProfileUserId) || null;
+    return canViewPendingUser(selectedUser) ? selectedUser : null;
 }
 
 function setSelectedStaffProfileUser(userId) {

@@ -2277,6 +2277,10 @@ function hasUserCompanyAccess(user, companyId) {
     return user.authorizedCompanies.includes(companyId);
 }
 
+function canViewPendingUser(user) {
+    return !!user && (!user.isPendingActivation || hasPermission('generate_codes'));
+}
+
 function buildPurchaseLogDetails(cartItems) {
     return {
         expiresAt: new Date(Date.now() + PURCHASE_LOG_DETAILS_TTL_MS).toISOString(),

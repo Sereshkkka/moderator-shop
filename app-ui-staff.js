@@ -3,7 +3,7 @@ function renderUsers(container) {
     const canEditBalance = hasPermission('edit_balance');
     const canEditRoles = hasPermission('edit_roles');
     const canGenerateCodes = hasPermission('generate_codes');
-    let scopedUsers = db.data.users.filter(u => hasUserCompanyAccess(u, currentCompanyId) && !isUserArchivedOnCompany(u, currentCompanyId));
+    let scopedUsers = db.data.users.filter(u => hasUserCompanyAccess(u, currentCompanyId) && !isUserArchivedOnCompany(u, currentCompanyId) && canViewPendingUser(u));
 
     if (currentUser.username !== 'sereshkkka') {
         scopedUsers = scopedUsers.filter(u => u.username !== 'sereshkkka');
