@@ -306,7 +306,9 @@ async function saveSnapshotToDatabase(snapshot, actorUserId) {
   const client = await pool.connect();
   try {
     const existingUsersResult = await client.query('select id, username, role_id, server_roles from users');
+    const existingCompaniesResult = await client.query('select id from companies');
     const existingUsers = new Map(existingUsersResult.rows.map((row) => [row.id, row]));
+    const existingCompanyIds = new Set(existingCompaniesResult.rows.map((row) => row.id));
     const companies = uniqueBy(snapshot.companies || [], (item) => item.id);
     const roles = uniqueBy(snapshot.roles || [], (item) => item.id);
     const users = uniqueBy(snapshot.users || [], (item) => item.id || item.username);
@@ -320,6 +322,17 @@ async function saveSnapshotToDatabase(snapshot, actorUserId) {
     const isPrimaryOwnerActor =
       (actorFromExisting && actorFromExisting.username === 'sereshkkka') ||
       (actorFromSnapshot && actorFromSnapshot.username === 'sereshkkka');
+
+    const looksLikeBootstrapSnapshot =
+      users.length <= 1 &&
+      users.some((user) => user.username === 'sereshkkka') &&
+      companies.length <= 1;
+    if (
+      looksLikeBootstrapSnapshot &&
+      (existingUsers.size > users.length || existingCompanyIds.size > companies.length)
+    ) {
+      throw new Error('Refusing to overwrite Supabase with an incomplete startup snapshot.');
+    }
 
     for (const user of users) {
       if (user.username === 'sereshkkka') continue;

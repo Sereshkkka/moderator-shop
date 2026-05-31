@@ -1048,6 +1048,7 @@ class Database {
     constructor() {
         this.pendingRemoteSave = null;
         this.remoteSaveTimer = null;
+        this.remoteSyncReady = false;
         this.load();
         if (!this.data) {
             this.data = {
@@ -1206,6 +1207,7 @@ class Database {
                     this.applyTableSnapshot(snapshot);
                     ensureDefaultAdminInData(this.data);
                 } else {
+                    this.remoteSyncReady = true;
                     await this.saveRemote();
                 }
             } catch (e) {
@@ -1222,6 +1224,7 @@ class Database {
                 console.error('Table mode init error', e);
             }
         }
+        this.remoteSyncReady = true;
         this.saveLocal();
         if (!USE_REMOTE_SYNC) {
             console.warn('Remote sync is disabled for security. The app is running in local-only mode.');
@@ -1272,7 +1275,7 @@ class Database {
     }
 
     async saveRemote() {
-        if (!USE_SERVER_DATABASE_SYNC) {
+        if (!USE_SERVER_DATABASE_SYNC || !this.remoteSyncReady) {
             return;
         }
         const response = await fetch('/api/snapshot', {
@@ -1293,7 +1296,7 @@ class Database {
     }
 
     scheduleRemoteSave() {
-        if (!USE_SERVER_DATABASE_SYNC) return;
+        if (!USE_SERVER_DATABASE_SYNC || !this.remoteSyncReady) return;
         if (this.remoteSaveTimer) {
             clearTimeout(this.remoteSaveTimer);
         }
@@ -1309,7 +1312,7 @@ class Database {
     }
 
     async flushRemoteSave() {
-        if (!USE_SERVER_DATABASE_SYNC) return;
+        if (!USE_SERVER_DATABASE_SYNC || !this.remoteSyncReady) return;
         if (this.remoteSaveTimer) {
             clearTimeout(this.remoteSaveTimer);
             this.remoteSaveTimer = null;
