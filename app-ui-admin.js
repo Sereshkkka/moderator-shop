@@ -37,7 +37,7 @@ function renderGlobalControl(container) {
         const activeSubTab = allowedTabs.includes(storedSubTab) ? storedSubTab : 'servers';
 
         container.innerHTML = [
-            '<h3 class="mb-3">Глобальное Управление ModShop</h3>',
+            '<h3 class="mb-3">Панель управления</h3>',
             '<div class="glass-panel mb-4" style="max-width:100%; padding:1.25rem; border:1px solid rgba(59,130,246,0.35); background:rgba(59,130,246,0.10); color:#bfdbfe;">',
                 '<strong>Supabase Auth safe mode.</strong>',
                 '<p style="margin-top:0.75rem; color:#dbeafe;">В этом разделе уже включены безопасные server-side действия для серверов, webhook-настроек и доступа сотрудников. Глобальные роли и destructive user-операции пока по-прежнему скрыты, пока для них не будет такого же безопасного backend-потока.</p>',
@@ -73,7 +73,7 @@ function renderGlobalControl(container) {
     const activeSubTab = sessionStorage.getItem('global_sub_tab') || 'servers';
 
     container.innerHTML = [
-        '<h3 class="mb-3">Глобальное Управление ModShop</h3>',
+        '<h3 class="mb-3">Панель управления</h3>',
         '<div class="tab-headers mb-4" style="border-bottom:1px solid var(--border)">',
             '<div class="tab-header ' + (activeSubTab === 'servers' ? 'active' : '') + '" data-sub="servers">Серверы</div>',
             '<div class="tab-header ' + (activeSubTab === 'users' ? 'active' : '') + '" data-sub="users">Все Пользователи</div>',

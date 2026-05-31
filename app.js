@@ -1962,7 +1962,7 @@ function renderDashboard(root) {
                     '<a class="nav-link" data-target="users">Сотрудники сервера</a>',
                     hasPermission('view_logs') ? '<a class="nav-link" data-target="logs">Транзакции</a>' : '',
                     hasPermission('access_archive') ? '<a class="nav-link" data-target="archive" style="color:#94a3b8">Архив</a>' : '',
-                    isWebsiteAdmin ? '<a class="nav-link" data-target="globalctrl" style="color:var(--secondary)">Гл. Управление</a>' : '',
+                    isWebsiteAdmin ? '<a class="nav-link" data-target="globalctrl" style="color:var(--secondary)">Панель управления</a>' : '',
                 '</nav>',
             '</aside>',
             '<main class="main-content">',
