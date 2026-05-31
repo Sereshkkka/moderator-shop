@@ -53,7 +53,9 @@ window.closeBalanceModalAndReturnToStaffProfile = (targetUserId, shouldRefreshPr
     if (targetUserId && shouldRefreshProfile) {
         const content = getDashboardContent();
         const targetUser = db.data.users.find(u => u.id === targetUserId);
-        if (content && targetUser && getActiveDashboardTab() === 'staffprofile') {
+        const selectedStaffUser = getSelectedStaffProfileUser();
+        if (content && targetUser && (getActiveDashboardTab() === 'staffprofile' || selectedStaffUser?.id === targetUser.id)) {
+            sessionStorage.setItem('active_tab', 'staffprofile');
             renderStaffProfile(content, targetUser);
         }
     }

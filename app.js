@@ -369,15 +369,18 @@ class SupabaseTableGateway {
             row.company_id,
             ...Object.keys(companyRoles)
         ].filter(Boolean)));
+        const roleId = row.role_id === PENDING_ROLE_ID ? 'helper' : row.role_id;
         authorizedCompanies.forEach(companyId => {
             if (!companyRoles[companyId]) {
-                companyRoles[companyId] = row.role_id;
+                companyRoles[companyId] = roleId;
             }
             if (companyRoles[companyId] === PENDING_ROLE_ID) {
                 companyRoles[companyId] = 'helper';
             }
         });
-        const roleId = row.role_id === PENDING_ROLE_ID ? 'helper' : row.role_id;
+        if (row.company_id) {
+            companyRoles[row.company_id] = roleId;
+        }
 
         return {
             id: row.id,
