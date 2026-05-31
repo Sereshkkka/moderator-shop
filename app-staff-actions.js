@@ -218,7 +218,8 @@ window.updateRole = async (uid) => {
             try {
                 const remoteUser = await authGateway.rpcUpdateRole(authSession.access_token, {
                     target_user_id: uid,
-                    new_role_id: newRole
+                    new_role_id: newRole,
+                    target_company_id: currentCompanyId
                 });
                 if (remoteUser) {
                     upsertLocalUser(remoteUser);

@@ -359,23 +359,46 @@ class SupabaseTableGateway {
     }
 
     mapUserRow(row) {
+        const companyRoles = row.server_roles && typeof row.server_roles === 'object' && !Array.isArray(row.server_roles)
+            ? { ...row.server_roles }
+            : {};
+        const reprimands = row.reprimands && typeof row.reprimands === 'object' && !Array.isArray(row.reprimands)
+            ? { ...row.reprimands }
+            : {};
+        const authorizedCompanies = Array.from(new Set([
+            row.company_id,
+            ...Object.keys(companyRoles)
+        ].filter(Boolean)));
+        authorizedCompanies.forEach(companyId => {
+            if (!companyRoles[companyId]) {
+                companyRoles[companyId] = row.role_id;
+            }
+            if (companyRoles[companyId] === PENDING_ROLE_ID) {
+                companyRoles[companyId] = 'helper';
+            }
+        });
+        const roleId = row.role_id === PENDING_ROLE_ID ? 'helper' : row.role_id;
+
         return {
             id: row.id,
             username: row.username,
             password: row.password_hash,
             coins: row.coins || 0,
-            role: row.role_id,
+            role: roleId,
             companyId: row.company_id,
             date: row.created_at,
             cart: Array.isArray(row.cart) ? row.cart : [],
             isArchived: !!row.is_archived,
             isPendingActivation: !!row.is_pending_activation,
+            mustChangePassword: !!row.must_change_password,
             accountStatus: row.account_status || 'активен',
             discordId: row.discord_id || '',
             discordUsername: row.discord_username || '',
             discordAvatarUrl: row.discord_avatar_url || '',
             inviteCodeId: row.invite_code_id || null,
-            authorizedCompanies: [row.company_id],
+            authorizedCompanies,
+            companyRoles,
+            reprimands,
             authUserId: row.auth_user_id || null,
             email: row.email || ''
         };
@@ -641,7 +664,17 @@ class SupabaseAuthGateway {
     }
 
     async rpcUpdateRole(accessToken, payload) {
-        const row = await this.callRpc(accessToken, 'staff_update_role', payload);
+        let row;
+        try {
+            row = await this.callRpc(accessToken, 'staff_update_role', payload);
+        } catch (error) {
+            const canRetryWithoutCompany = payload && payload.target_company_id
+                && /function|parameter|signature|schema cache|Could not find/i.test(error.message || '');
+            if (!canRetryWithoutCompany) throw error;
+            const legacyPayload = { ...payload };
+            delete legacyPayload.target_company_id;
+            row = await this.callRpc(accessToken, 'staff_update_role', legacyPayload);
+        }
         return row ? tableGateway.mapUserRow(row) : null;
     }
 
