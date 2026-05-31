@@ -167,7 +167,7 @@ function renderHighMod(container) {
         });
         db.save();
         document.getElementById('hc_username').value = '';
-        showToast('код сгенерирован.Аккаунт создан');
+        showToast('код приглашения создан');
         renderCodes();
     };
 

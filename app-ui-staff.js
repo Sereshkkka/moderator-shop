@@ -61,7 +61,7 @@ function renderUsers(container) {
         codesHtml = [
             '<div class="glass-panel mb-4" style="max-width:100%; padding:1.5rem;">',
                 '<h4>Генерация кодов</h4>',
-                '<p class="mb-3 mt-2 text-muted">Создайте код для нового сотрудника. Аккаунт ожидания будет создан сразу.</p>',
+                '<p class="mb-3 mt-2 text-muted">Создайте код для нового сотрудника.</p>',
                 '<div class="staff-summary-row" style="margin-bottom:1rem;">',
                     '<div class="form-group" style="margin-bottom:0;">',
                         '<label>Никнейм</label>',
@@ -158,7 +158,7 @@ function renderUsers(container) {
                     });
                     document.getElementById('hc_username').value = '';
                     await syncStaffReadSnapshot();
-                    showToast('код сгенерирован.Аккаунт создан');
+                    showToast('код приглашения создан');
                     renderUsers(document.getElementById('dashboardContent'));
                     return;
                 } catch (error) {
@@ -196,7 +196,7 @@ function renderUsers(container) {
             });
             db.save();
             document.getElementById('hc_username').value = '';
-        showToast('код сгенерирован.Аккаунт создан');
+        showToast('код приглашения создан');
             renderUsers(document.getElementById('dashboardContent'));
         };
 
