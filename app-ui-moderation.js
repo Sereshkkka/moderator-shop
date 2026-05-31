@@ -20,7 +20,7 @@ function renderHighMod(container) {
                 '<button class="btn btn-primary" id="btnGenCode">Создать Код</button>',
 
                 '<h4 class="mt-4 mb-2">Активные коды сервера</h4>',
-                '<div class="table-container">',
+                '<div class="table-container" id="codesTableContainer" style="display:none;">',
                     '<table>',
                         '<thead>',
                             '<tr>',
@@ -100,7 +100,11 @@ function renderHighMod(container) {
 
     const renderCodes = () => {
         const tb = document.getElementById('codesTableBody');
+        const tableContainer = document.getElementById('codesTableContainer');
         const scopedCodes = db.data.codes.filter(c => c.companyId === currentCompanyId && !c.isUsed);
+        if (tableContainer) {
+            tableContainer.style.display = scopedCodes.length ? '' : 'none';
+        }
 
         tb.innerHTML = scopedCodes.map(c => {
             const statusBadge = c.isUsed ? '<span class="badge badge-error">Использован</span>' : '<span class="badge badge-success" style="background:var(--success);color:white">Активен</span>';

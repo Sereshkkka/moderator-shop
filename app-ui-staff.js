@@ -71,7 +71,7 @@ function renderUsers(container) {
                         '<button class="btn btn-primary" id="btnGenCode" style="width:auto;">Создать код</button>',
                     '</div>',
                 '</div>',
-                '<div class="table-container">',
+                '<div class="table-container" id="codesTableContainer" style="display:none;">',
                     '<table>',
                         '<thead>',
                             '<tr>',
@@ -104,7 +104,11 @@ function renderUsers(container) {
     if (canGenerateCodes) {
         const renderCodes = () => {
             const tb = document.getElementById('codesTableBody');
+            const tableContainer = document.getElementById('codesTableContainer');
             const scopedCodes = db.data.codes.filter(c => c.companyId === currentCompanyId && !c.isUsed);
+            if (tableContainer) {
+                tableContainer.style.display = scopedCodes.length ? '' : 'none';
+            }
             tb.innerHTML = scopedCodes.map(c => {
                 const statusBadge = c.isUsed ? '<span class="badge badge-error">Использован</span>' : '<span class="badge badge-success" style="background:var(--success);color:white">Активен</span>';
                 const actionBtn = !c.isUsed
