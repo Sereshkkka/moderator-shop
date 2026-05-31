@@ -59,6 +59,15 @@ window.closeBalanceModalAndReturnToStaffProfile = (targetUserId, shouldRefreshPr
     }
 };
 
+function applyRoleToUserForCurrentCompany(user, roleId) {
+    if (!user) return;
+    ensureUserCompanyRoles(user);
+    user.companyRoles[currentCompanyId] = roleId;
+    if (user.companyId === currentCompanyId) {
+        user.role = roleId;
+    }
+}
+
 function normalizeBalanceValue(value) {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return null;
@@ -215,6 +224,12 @@ window.updateRole = async (uid) => {
                     upsertLocalUser(remoteUser);
                 }
                 await syncStaffReadSnapshot();
+                const refreshedUser = db.data.users.find(user => user.id === uid);
+                applyRoleToUserForCurrentCompany(refreshedUser, newRole);
+                if (refreshedUser && refreshedUser.id === currentUser.id) {
+                    applyRoleToUserForCurrentCompany(currentUser, newRole);
+                }
+                db.saveLocal();
                 showToast('Роль обновлена через безопасный server-side RPC.');
                 closeBalanceModalAndReturnToStaffProfile(uid, true);
                 return;
@@ -224,17 +239,9 @@ window.updateRole = async (uid) => {
             }
         }
 
-        ensureUserCompanyRoles(u);
-        u.companyRoles[currentCompanyId] = newRole;
-        if (u.companyId === currentCompanyId) {
-            u.role = newRole;
-        }
+        applyRoleToUserForCurrentCompany(u, newRole);
         if (u.id === currentUser.id) {
-            ensureUserCompanyRoles(currentUser);
-            currentUser.companyRoles[currentCompanyId] = newRole;
-            if (currentUser.companyId === currentCompanyId) {
-                currentUser.role = newRole;
-            }
+            applyRoleToUserForCurrentCompany(currentUser, newRole);
         }
         if (newRole !== 'admin' && sessionStorage.getItem('active_tab') === 'globalctrl') {
             sessionStorage.setItem('active_tab', 'profile');
