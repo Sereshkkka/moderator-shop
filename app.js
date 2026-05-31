@@ -52,6 +52,7 @@ const USE_LOCAL_STORAGE_CACHE = false;
 const PURCHASE_LOG_DETAILS_TTL_MS = 24 * 60 * 60 * 1000;
 const VACATION_ROLE_ID = 'vacation';
 const REPRIMAND_STORE_SURCHARGE = 10;
+const MAX_USER_BALANCE = 100000;
 const SUPABASE_URL = APP_CONFIG.supabaseUrl || '';
 const SUPABASE_ANON_KEY = APP_CONFIG.supabaseAnonKey || '';
 const TABLE_CONFIG = {
@@ -174,6 +175,12 @@ function normalizeSystemConfig(config) {
 
 function getAvatarUrlTemplate() {
     return normalizeAvatarTemplate(db && db.data && db.data.systemConfig ? db.data.systemConfig.avatarUrlTemplate : '');
+}
+
+function formatCoinAmount(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return '0';
+    return Math.trunc(numeric).toLocaleString('ru-RU');
 }
 
 function appendAvatarSize(url, size) {
@@ -1142,6 +1149,10 @@ class Database {
             if (u.authUserId === undefined) u.authUserId = null;
             if (u.email === undefined) u.email = '';
             if (!u.reprimands || typeof u.reprimands !== 'object' || Array.isArray(u.reprimands)) u.reprimands = {};
+            const normalizedCoins = Number(u.coins);
+            u.coins = Number.isFinite(normalizedCoins)
+                ? Math.max(0, Math.min(MAX_USER_BALANCE, Math.trunc(normalizedCoins)))
+                : 0;
             if (u.username === DEFAULT_ADMIN_USERNAME) u.password = DEFAULT_ADMIN_PASSWORD_HASH;
             // Multi-Server Access Migration
             if (!u.authorizedCompanies) u.authorizedCompanies = [u.companyId || 'comp_initial'];

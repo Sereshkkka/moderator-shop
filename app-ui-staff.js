@@ -49,7 +49,7 @@ function renderUsers(container) {
                     pendingStatusBadge,
                 '</div>',
                 '<div class="staff-tile-meta">',
-                    '<span>' + u.coins + ' монет</span>',
+                    '<span>' + formatCoinAmount(u.coins) + ' монет</span>',
                     '<span>' + new Date(u.date).toLocaleDateString() + '</span>',
                 '</div>',
             '</button>'
@@ -345,7 +345,7 @@ function renderStaffProfile(container, targetUser) {
                         pendingInviteCodeRow,
                         '<div class="profile-stat-row"><span>Должность</span><div class="profile-stat-value-wrap"><strong>' + currentRoleLabel + '</strong>' + roleEditButton + '</div></div>',
                         '<div class="profile-stat-row"><span>Выговоры</span><div class="profile-stat-value-wrap"><strong>' + reprimandCount + '</strong>' + reprimandControls + '</div></div>',
-                        '<div class="profile-stat-row profile-stat-balance"><span>Баланс</span><div class="profile-stat-value-wrap"><strong>' + targetUser.coins + ' монет</strong>' + balanceEditButton + '</div></div>',
+                        '<div class="profile-stat-row profile-stat-balance"><span>Баланс</span><div class="profile-stat-value-wrap"><strong>' + formatCoinAmount(targetUser.coins) + ' монет</strong>' + balanceEditButton + '</div></div>',
                     '</div>',
                     (actionButtons ? '<div class="staff-profile-actions">' + actionButtons + '</div>' : ''),
                 '</div>',

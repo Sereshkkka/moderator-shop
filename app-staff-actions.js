@@ -56,12 +56,22 @@ window.closeBalanceModalAndReturnToStaffProfile = (targetUserId) => {
     }
 };
 
+function normalizeBalanceValue(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return null;
+    return Math.trunc(numeric);
+}
+
 window.executeBalanceEdit = async (targetUserId) => {
     const targetUser = db.data.users.find(u => u.id === targetUserId);
     if (!targetUser) return;
 
     const op = document.getElementById('bm_op')?.value || 'add';
-    const amount = parseInt(document.getElementById('bm_amount').value) || 0;
+    const amount = normalizeBalanceValue(document.getElementById('bm_amount').value);
+    if (amount === null || amount < 0) {
+        showToast('Введите корректное количество монет.', 'error');
+        return;
+    }
     const rawReasonText = document.getElementById('bm_reason').value;
     if (rawReasonText.length > 20) {
         showToast('Причина не может быть длиннее 20 символов.', 'error');
@@ -69,13 +79,17 @@ window.executeBalanceEdit = async (targetUserId) => {
     }
     const reasonText = rawReasonText.trim() || 'Без причины';
 
-    const oldBal = targetUser.coins;
+    const oldBal = normalizeBalanceValue(targetUser.coins) ?? 0;
     let newBal = oldBal;
 
     if (op === 'add') newBal += amount;
     if (op === 'sub') newBal -= amount;
     if (op === 'set') newBal = amount;
     if (newBal < 0) newBal = 0;
+    if (newBal > MAX_USER_BALANCE) {
+        showToast('Максимальный баланс: 100000 монет.', 'error');
+        return;
+    }
 
     if (isSupabaseSessionActive()) {
         const authSession = authGateway.getStoredSession();
@@ -443,7 +457,7 @@ window.openBalanceEditModal = (targetUserId) => {
                 '</div>',
                 '<div class="form-group">',
                     '<label>Количество</label>',
-                    '<input type="number" id="bm_amount" class="form-control" value="0" min="0" style="background-color:rgba(0,0,0,0.6)">',
+                    '<input type="number" id="bm_amount" class="form-control" value="0" min="0" max="' + MAX_USER_BALANCE + '" step="1" style="background-color:rgba(0,0,0,0.6)">',
                 '</div>',
                 '<div class="form-group">',
                     '<label>Причина</label>',

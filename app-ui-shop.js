@@ -64,7 +64,7 @@ function renderProfile(container) {
                     '<div class="profile-stat-stack">',
                         '<div class="profile-stat-row"><span>Должность</span><strong>' + currentRoleLabel + '</strong></div>',
                         '<div class="profile-stat-row"><span>Выговоры</span><strong>' + reprimandCount + '</strong></div>',
-                        '<div class="profile-stat-row profile-stat-balance"><span>Баланс</span><strong>' + currentUser.coins + ' монет</strong></div>',
+                        '<div class="profile-stat-row profile-stat-balance"><span>Баланс</span><strong>' + formatCoinAmount(currentUser.coins) + ' монет</strong></div>',
                     '</div>',
                     '<button class="btn btn-outline profile-password-btn" onclick="openPasswordChangeModal()">Сменить пароль</button>',
                 '</div>',
