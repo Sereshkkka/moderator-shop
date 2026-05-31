@@ -1582,6 +1582,48 @@ body.light-theme tr:hover td {
   animation: fadeUp 0.3s ease-out;
 }
 
+body.light-theme .modal-overlay {
+  background: rgba(15, 23, 42, 0.46);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+body.light-theme .modal-content {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(148, 163, 184, 0.36);
+  color: #0f172a;
+  box-shadow: 0 22px 48px rgba(15, 23, 42, 0.22);
+}
+
+body.light-theme .modal-content h3,
+body.light-theme .modal-content h4,
+body.light-theme .modal-content strong {
+  color: #0f172a;
+}
+
+body.light-theme .modal-content .text-muted,
+body.light-theme .modal-content label {
+  color: #64748b;
+}
+
+body.light-theme .modifier-toggle-btn {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+body.light-theme .modifier-toggle-btn:hover {
+  background: #eef2ff;
+  border-color: rgba(79, 70, 229, 0.28);
+}
+
+body.light-theme .modifier-toggle-btn.active {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border-color: rgba(79, 70, 229, 0.7);
+  color: #ffffff;
+  box-shadow: 0 12px 22px rgba(79, 70, 229, 0.24);
+}
+
 .store-item-modal {
   max-width: 560px;
 }

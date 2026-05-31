@@ -302,7 +302,7 @@ window.openCompanyRenameModal = (cId) => {
                 '<h3 style="margin-bottom:1.5rem">Переименовать сервер</h3>',
                 '<div class="form-group">',
                     '<label>Название для: ' + escapeHTML(comp.name) + '</label>',
-                    '<input type="text" id="ren_comp_name" class="form-control" value="' + escapeHTML(comp.name) + '" style="background-color:rgba(0,0,0,0.6)">',
+                    '<input type="text" id="ren_comp_name" class="form-control" value="' + escapeHTML(comp.name) + '">',
                 '</div>',
                 '<div class="action-row mt-4">',
                     '<button class="btn btn-primary" onclick="executeCompanyRename(\'' + comp.id + '\')">Сохранить название</button>',
