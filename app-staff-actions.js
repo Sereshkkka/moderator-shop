@@ -45,14 +45,17 @@ window.toggleUserVacation = (targetUserId) => {
 window.closeBalanceModal = () => {
     const w = document.getElementById('balanceModalWrapper');
     if (!w) return;
-    w.innerHTML = '';
     w.replaceChildren();
 };
 
-window.closeBalanceModalAndReturnToStaffProfile = (targetUserId) => {
+window.closeBalanceModalAndReturnToStaffProfile = (targetUserId, shouldRefreshProfile) => {
     closeBalanceModal();
-    if (targetUserId) {
-        setTimeout(() => openStaffProfileTab(targetUserId), 0);
+    if (targetUserId && shouldRefreshProfile) {
+        const content = getDashboardContent();
+        const targetUser = db.data.users.find(u => u.id === targetUserId);
+        if (content && targetUser && getActiveDashboardTab() === 'staffprofile') {
+            renderStaffProfile(content, targetUser);
+        }
     }
 };
 
@@ -213,7 +216,7 @@ window.updateRole = async (uid) => {
                 }
                 await syncStaffReadSnapshot();
                 showToast('Роль обновлена через безопасный server-side RPC.');
-                closeBalanceModalAndReturnToStaffProfile(uid);
+                closeBalanceModalAndReturnToStaffProfile(uid, true);
                 return;
             } catch (error) {
                 showToast(error.message || 'Не удалось изменить роль через RPC.', 'error');
@@ -238,7 +241,7 @@ window.updateRole = async (uid) => {
         }
         db.save();
         showToast('Роль на сервере обновлена.');
-        closeBalanceModalAndReturnToStaffProfile(uid);
+        closeBalanceModalAndReturnToStaffProfile(uid, true);
     }
 };
 
