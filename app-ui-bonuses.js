@@ -93,7 +93,7 @@ function openBonusRequestModal() {
                 '</div>',
                 '<div id="bonusDynamicField"></div>',
                 '<div class="form-group">',
-                    '<label>Комментарий игрока</label>',
+                    '<label>Комментарий</label>',
                     '<textarea class="form-control" id="bonus_comment" rows="4" maxlength="500" placeholder="Кратко опишите, за что запрашивается премия"></textarea>',
                 '</div>',
                 '<div class="form-group">',
