@@ -20,10 +20,8 @@ function getBonusStatusBadge(status) {
 function normalizeBonusPayoutState(requests) {
     let changed = false;
     requests.forEach(request => {
-        if (request.status === 'approved' && !Object.prototype.hasOwnProperty.call(request, 'paidAt')) {
+        if (request.status === 'approved' && request.paidAt) {
             request.status = 'paid';
-            request.paidAt = request.reviewedAt || request.createdAt || new Date().toISOString();
-            request.paidBy = request.reviewedBy || null;
             changed = true;
         }
     });
@@ -41,12 +39,11 @@ function renderBonuses(container) {
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     const storedFilter = sessionStorage.getItem(BONUS_FILTER_STORAGE_KEY) || 'all';
-    const activeFilter = ['all', 'pending', 'approved', 'paid', 'rejected'].includes(storedFilter) ? storedFilter : 'all';
+    const activeFilter = ['all', 'pending', 'paid', 'rejected'].includes(storedFilter) ? storedFilter : 'all';
     const requests = activeFilter === 'all'
         ? allRequests
         : allRequests.filter(request => request.status === activeFilter);
     const totalCount = allRequests.length;
-    const approvedCount = allRequests.filter(request => request.status === 'approved').length;
     const paidCount = allRequests.filter(request => request.status === 'paid').length;
     const rejectedCount = allRequests.filter(request => request.status === 'rejected').length;
     const totalPendingCount = allRequests.filter(request => request.status === 'pending').length;
@@ -62,7 +59,7 @@ function renderBonuses(container) {
         const deleteButton = (canReviewBonus || (request.userId === currentUser.id && request.status === 'pending'))
             ? '<button class="btn btn-outline" style="padding:0.35rem 0.7rem; width:auto;" onclick="deleteBonusRequest(\'' + request.id + '\')">Удалить</button>'
             : '';
-        const amountEditButton = canReviewBonus && ['pending', 'approved'].includes(request.status)
+        const amountEditButton = canReviewBonus && request.status === 'pending'
             ? '<button type="button" class="icon-edit-trigger" onclick="openBonusAmountEditModal(\'' + request.id + '\')" title="Изменить сумму" aria-label="Изменить сумму">' + BONUS_EDIT_ICON_SVG + '</button>'
             : '';
         const amountWasEdited = request.originalAmount !== null && request.originalAmount !== undefined && Number(request.originalAmount) !== Number(request.amount);
@@ -85,16 +82,6 @@ function renderBonuses(container) {
                         '<button class="btn btn-success" style="padding:0.35rem 0.7rem; width:auto;" onclick="approveBonusRequest(\'' + request.id + '\')">Одобрить</button>',
                         commentButton,
                         '<button class="btn btn-danger" style="padding:0.35rem 0.7rem; width:auto;" onclick="rejectBonusRequest(\'' + request.id + '\')">Отклонить</button>',
-                    '</div>',
-                    deleteButton,
-                '</div>'
-            ].join('');
-        } else if (canReviewBonus && request.status === 'approved') {
-            reviewActions = [
-                '<div class="bonus-actions-row">',
-                    '<div class="bonus-actions-main">',
-                        '<span style="color:var(--text-muted)">' + (reviewer ? escapeHTML(reviewer.username) : '—') + '</span>',
-                        '<button class="btn btn-success" style="padding:0.35rem 0.7rem; width:auto;" onclick="payBonusRequest(\'' + request.id + '\')">Выплатить</button>',
                     '</div>',
                     deleteButton,
                 '</div>'
@@ -139,7 +126,6 @@ function renderBonuses(container) {
         '<div class="bonus-filter-bar mb-4">',
             filterButton('all', 'Все', totalCount),
             filterButton('pending', 'На рассмотрении', totalPendingCount),
-            filterButton('approved', 'Одобрены', approvedCount),
             filterButton('paid', 'Выплачены', paidCount),
             filterButton('rejected', 'Отклонены', rejectedCount),
         '</div>',
@@ -187,6 +173,35 @@ function setBonusRequestsFilter(filter) {
     renderBonuses(getDashboardContent());
 }
 
+function applyBonusPayout(request) {
+    const targetUser = db.data.users.find(user => user.id === request.userId);
+    if (!targetUser) {
+        showToast('Пользователь заявки не найден.', 'error');
+        return false;
+    }
+    const oldBalance = Number(targetUser.coins || 0);
+    const nextBalance = Math.min(MAX_USER_BALANCE, oldBalance + Number(request.amount || 0));
+    targetUser.coins = nextBalance;
+    if (currentUser.id === targetUser.id) currentUser.coins = nextBalance;
+    request.status = 'paid';
+    request.reviewedAt = request.reviewedAt || new Date().toISOString();
+    request.reviewedBy = request.reviewedBy || currentUser.id;
+    request.paidAt = new Date().toISOString();
+    request.paidBy = currentUser.id;
+    db.data.logs.push({
+        id: db.generateId(),
+        userId: targetUser.id,
+        modifierId: currentUser.id,
+        companyId: currentCompanyId,
+        oldBalance,
+        newBalance: nextBalance,
+        type: 'Bonus Approval',
+        reason: 'Премия: ' + request.reasonLabel,
+        date: new Date().toISOString()
+    });
+    return true;
+}
+
 function openBonusReviewCommentModal(requestId) {
     if (!hasPermission('review_bonuses')) return showToast('Нет прав на рассмотрение премий.', 'error');
     const request = getBonusRequests().find(item => item.id === requestId);
@@ -217,7 +232,7 @@ function openBonusAmountEditModal(requestId) {
     if (!hasPermission('review_bonuses')) return showToast('Нет прав на рассмотрение премий.', 'error');
     const request = getBonusRequests().find(item => item.id === requestId);
     if (!request) return showToast('Заявка не найдена.', 'error');
-    if (!['pending', 'approved'].includes(request.status)) return showToast('Сумму этой заявки уже нельзя изменить.', 'error');
+    if (request.status !== 'pending') return showToast('Сумму этой заявки уже нельзя изменить.', 'error');
     const modalWrapper = ensureBalanceModalWrapper();
 
     modalWrapper.innerHTML = [
@@ -244,7 +259,7 @@ async function saveBonusAmountEdit(requestId) {
     normalizeBonusPayoutState(requests);
     const request = requests.find(item => item.id === requestId);
     if (!request) return showToast('Заявка не найдена.', 'error');
-    if (!['pending', 'approved'].includes(request.status)) return showToast('Сумму этой заявки уже нельзя изменить.', 'error');
+    if (request.status !== 'pending') return showToast('Сумму этой заявки уже нельзя изменить.', 'error');
     const nextAmount = Math.trunc(Number(document.getElementById('bonus_amount_edit_value')?.value || 0));
     if (!Number.isFinite(nextAmount) || nextAmount <= 0) return showToast('Укажите корректную сумму.', 'error');
     const clampedAmount = Math.min(nextAmount, MAX_USER_BALANCE);
@@ -274,15 +289,18 @@ async function resolveBonusRequestWithComment(requestId, status) {
     if (!reviewComment) return showToast('Добавьте комментарий к решению.', 'error');
     if (reviewComment.length > BONUS_REVIEW_COMMENT_MAX_LENGTH) return showToast('Комментарий слишком длинный.', 'error');
     request.reviewComment = reviewComment;
-    request.status = status;
     request.reviewedAt = new Date().toISOString();
     request.reviewedBy = currentUser.id;
     request.paidAt = null;
     request.paidBy = null;
+    if (status === 'approved' && !applyBonusPayout(request)) return;
+    if (status === 'rejected') {
+        request.status = 'rejected';
+    }
     await db.save();
     await db.flushRemoteSave();
     closeBalanceModal();
-    showToast(status === 'approved' ? 'Премия одобрена с комментарием.' : 'Заявка отклонена с комментарием.');
+    showToast(status === 'approved' ? 'Премия одобрена, прокомментирована и выплачена.' : 'Заявка отклонена с комментарием.');
     renderBonuses(getDashboardContent());
 }
 
@@ -334,14 +352,14 @@ async function approveBonusRequest(requestId) {
     normalizeBonusPayoutState(requests);
     const request = requests.find(item => item.id === requestId);
     if (!request || request.status !== 'pending') return;
-    request.status = 'approved';
     request.reviewedAt = new Date().toISOString();
     request.reviewedBy = currentUser.id;
     request.paidAt = null;
     request.paidBy = null;
+    if (!applyBonusPayout(request)) return;
     await db.save();
     await db.flushRemoteSave();
-    showToast('Премия одобрена. Теперь её можно выплатить.');
+    showToast('Премия одобрена и выплачена.');
     renderBonuses(getDashboardContent());
 }
 
@@ -351,26 +369,7 @@ async function payBonusRequest(requestId) {
     normalizeBonusPayoutState(requests);
     const request = requests.find(item => item.id === requestId);
     if (!request || request.status !== 'approved') return;
-    const targetUser = db.data.users.find(user => user.id === request.userId);
-    if (!targetUser) return showToast('Пользователь заявки не найден.', 'error');
-    const oldBalance = Number(targetUser.coins || 0);
-    const nextBalance = Math.min(MAX_USER_BALANCE, oldBalance + Number(request.amount || 0));
-    targetUser.coins = nextBalance;
-    if (currentUser.id === targetUser.id) currentUser.coins = nextBalance;
-    request.status = 'paid';
-    request.paidAt = new Date().toISOString();
-    request.paidBy = currentUser.id;
-    db.data.logs.push({
-        id: db.generateId(),
-        userId: targetUser.id,
-        modifierId: currentUser.id,
-        companyId: currentCompanyId,
-        oldBalance,
-        newBalance: nextBalance,
-        type: 'Bonus Approval',
-        reason: 'Премия: ' + request.reasonLabel,
-        date: new Date().toISOString()
-    });
+    if (!applyBonusPayout(request)) return;
     await db.save();
     await db.flushRemoteSave();
     showToast('Премия выплачена.');
