@@ -58,7 +58,7 @@ function renderBonuses(container) {
             '</div>',
             canCreateBonus ? '<button class="btn btn-primary" style="width:auto;" onclick="openBonusRequestModal()">Оставить заявку</button>' : '',
         '</div>',
-        '<div class="glass-panel mb-4" style="max-width:100%; padding:1rem 1.25rem; border:1px solid rgba(239,68,68,0.35); background:rgba(239,68,68,0.10); color:#fecaca; font-weight:700;">ВНИМАНИЕ: злоупотребление либо оставление некоректных заявок наказываеться штрафом/выговором</div>',
+        '<div class="glass-panel mb-4" style="max-width:100%; padding:1rem 1.25rem; border:1px solid rgba(239,68,68,0.35); background:rgba(239,68,68,0.10); color:#fecaca; font-weight:700;">ВНИМАНИЕ: злоупотребление либо оставление некоректных заявок наказывается штрафом/выговором</div>',
         '<div class="staff-summary-row">',
             '<div class="staff-summary-card"><span class="staff-summary-label">Всего заявок</span><strong>' + requests.length + '</strong></div>',
             '<div class="staff-summary-card"><span class="staff-summary-label">На рассмотрении</span><strong>' + pendingCount + '</strong></div>',
