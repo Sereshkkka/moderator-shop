@@ -53,7 +53,7 @@ function renderBonuses(container) {
         '</div>',
         '<div class="table-container">',
             '<table>',
-                '<thead><tr><th>Сотрудник</th><th>Причина</th><th>Комментарий</th><th>Сумма</th><th>Статус</th><th>Действие</th></tr></thead>',
+                '<thead><tr><th>Сотрудник</th><th>Причина</th><th>Комментарий</th><th>Сумма</th><th>Статус</th><th>Рассмотрено</th></tr></thead>',
                 '<tbody>' + rows + '</tbody>',
             '</table>',
         '</div>'
