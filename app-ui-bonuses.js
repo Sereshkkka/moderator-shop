@@ -1,3 +1,6 @@
+const BONUS_COMMENT_MAX_LENGTH = 120;
+const BONUS_REASON_MAX_LENGTH = 80;
+
 function getBonusStatusBadge(status) {
     if (status === 'approved') return '<span class="badge badge-success" style="background:var(--success);color:white">Одобрена</span>';
     if (status === 'rejected') return '<span class="badge badge-error">Отклонена</span>';
@@ -16,20 +19,29 @@ function renderBonuses(container) {
     const rows = requests.length ? requests.map(request => {
         const user = db.data.users.find(u => u.id === request.userId);
         const reviewer = request.reviewedBy ? db.data.users.find(u => u.id === request.reviewedBy) : null;
+        const deleteButton = (canReviewBonus || (request.userId === currentUser.id && request.status === 'pending'))
+            ? '<button class="btn btn-outline" style="padding:0.35rem 0.7rem; width:auto;" onclick="deleteBonusRequest(\'' + request.id + '\')">Удалить</button>'
+            : '';
         const reviewActions = canReviewBonus && request.status === 'pending'
             ? [
                 '<div style="display:flex; gap:0.5rem; flex-wrap:wrap;">',
                     '<button class="btn btn-success" style="padding:0.35rem 0.7rem; width:auto;" onclick="approveBonusRequest(\'' + request.id + '\')">Одобрить</button>',
                     '<button class="btn btn-danger" style="padding:0.35rem 0.7rem; width:auto;" onclick="rejectBonusRequest(\'' + request.id + '\')">Отклонить</button>',
+                    deleteButton,
                 '</div>'
             ].join('')
-            : '<span style="color:var(--text-muted)">' + (reviewer ? escapeHTML(reviewer.username) : '—') + '</span>';
+            : [
+                '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">',
+                    '<span style="color:var(--text-muted)">' + (reviewer ? escapeHTML(reviewer.username) : '—') + '</span>',
+                    deleteButton,
+                '</div>'
+            ].join('');
 
         return [
             '<tr>',
                 '<td><strong>' + escapeHTML(user ? user.username : 'Неизвестно') + '</strong><div class="text-muted" style="font-size:0.78rem;">' + new Date(request.createdAt).toLocaleString() + '</div></td>',
-                '<td>' + escapeHTML(request.reasonLabel) + '</td>',
-                '<td>' + escapeHTML(request.comment || '—') + '</td>',
+                '<td style="max-width:220px; white-space:normal; overflow-wrap:anywhere;">' + escapeHTML(request.reasonLabel) + '</td>',
+                '<td style="max-width:360px; white-space:normal; overflow-wrap:anywhere;">' + escapeHTML(request.comment || '—') + '</td>',
                 '<td><strong style="color:var(--warning)">' + formatCoinAmount(request.amount) + '</strong></td>',
                 '<td>' + getBonusStatusBadge(request.status) + (request.reviewComment ? '<div class="text-muted" style="font-size:0.78rem; margin-top:0.25rem;">' + escapeHTML(request.reviewComment) + '</div>' : '') + '</td>',
                 '<td>' + reviewActions + '</td>',
@@ -69,11 +81,12 @@ function openBonusRequestModal() {
                 '<h3 style="margin-bottom:1rem;">Заявка на премию</h3>',
                 '<div class="form-group">',
                     '<label>Причина заявки</label>',
-                    '<input type="text" class="form-control" id="bonus_reason_label" maxlength="120" placeholder="Например, разбор темы на форуме">',
+                    '<input type="text" class="form-control" id="bonus_reason_label" maxlength="' + BONUS_REASON_MAX_LENGTH + '" placeholder="Например, разбор темы на форуме">',
                 '</div>',
                 '<div class="form-group">',
                     '<label>Комментарий (ссылка на тему / #тикета)</label>',
-                    '<textarea class="form-control" id="bonus_comment" rows="4" maxlength="500" placeholder="Добавьте ссылку, номер тикета или краткий комментарий"></textarea>',
+                    '<textarea class="form-control" id="bonus_comment" rows="3" maxlength="' + BONUS_COMMENT_MAX_LENGTH + '" placeholder="Добавьте ссылку, номер тикета или краткий комментарий"></textarea>',
+                    '<div class="text-muted" style="font-size:0.82rem; margin-top:0.35rem;">До ' + BONUS_COMMENT_MAX_LENGTH + ' символов.</div>',
                 '</div>',
                 '<div class="form-group">',
                     '<label>Сумма надбавки</label>',
@@ -96,6 +109,8 @@ function submitBonusRequest() {
 
     if (!reasonLabel) return showToast('Укажите причину заявки.', 'error');
     if (!comment) return showToast('Добавьте комментарий к заявке.', 'error');
+    if (reasonLabel.length > BONUS_REASON_MAX_LENGTH) return showToast('Причина заявки слишком длинная.', 'error');
+    if (comment.length > BONUS_COMMENT_MAX_LENGTH) return showToast('Комментарий слишком длинный.', 'error');
     if (!Number.isFinite(amount) || amount <= 0) return showToast('Укажите корректную сумму надбавки.', 'error');
 
     const requests = getBonusRequests();
@@ -161,6 +176,19 @@ function rejectBonusRequest(requestId) {
     request.reviewedBy = currentUser.id;
     db.save();
     showToast('Заявка отклонена.');
+    renderBonuses(getDashboardContent());
+}
+
+function deleteBonusRequest(requestId) {
+    const requests = getBonusRequests();
+    const request = requests.find(item => item.id === requestId);
+    if (!request) return;
+    if (!hasPermission('review_bonuses') && !(request.userId === currentUser.id && request.status === 'pending')) {
+        return showToast('Нет прав на удаление этой заявки.', 'error');
+    }
+    db.data.systemConfig.bonusRequests = requests.filter(item => item.id !== requestId);
+    db.save();
+    showToast('Заявка удалена.');
     renderBonuses(getDashboardContent());
 }
 
