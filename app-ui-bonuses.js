@@ -1,5 +1,6 @@
 const BONUS_COMMENT_MAX_LENGTH = 120;
 const BONUS_REASON_MAX_LENGTH = 80;
+const BONUS_REVIEW_COMMENT_MAX_LENGTH = 180;
 const BONUS_FILTER_STORAGE_KEY = 'bonus_requests_filter';
 
 function getBonusStatusBadge(status) {
@@ -36,17 +37,22 @@ function renderBonuses(container) {
         const deleteButton = (canReviewBonus || (request.userId === currentUser.id && request.status === 'pending'))
             ? '<button class="btn btn-outline" style="padding:0.35rem 0.7rem; width:auto;" onclick="deleteBonusRequest(\'' + request.id + '\')">Удалить</button>'
             : '';
+        const commentButton = canReviewBonus
+            ? '<button class="btn btn-outline" style="padding:0.35rem 0.7rem; width:auto;" onclick="openBonusReviewCommentModal(\'' + request.id + '\')">Комментарий</button>'
+            : '';
         const reviewActions = canReviewBonus && request.status === 'pending'
             ? [
                 '<div style="display:flex; gap:0.5rem; flex-wrap:wrap;">',
                     '<button class="btn btn-success" style="padding:0.35rem 0.7rem; width:auto;" onclick="approveBonusRequest(\'' + request.id + '\')">Одобрить</button>',
                     '<button class="btn btn-danger" style="padding:0.35rem 0.7rem; width:auto;" onclick="rejectBonusRequest(\'' + request.id + '\')">Отклонить</button>',
+                    commentButton,
                     deleteButton,
                 '</div>'
             ].join('')
             : [
                 '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">',
                     '<span style="color:var(--text-muted)">' + (reviewer ? escapeHTML(reviewer.username) : '—') + '</span>',
+                    commentButton,
                     deleteButton,
                 '</div>'
             ].join('');
@@ -124,6 +130,44 @@ function openBonusRequestModal() {
 
 function setBonusRequestsFilter(filter) {
     sessionStorage.setItem(BONUS_FILTER_STORAGE_KEY, filter);
+    renderBonuses(getDashboardContent());
+}
+
+function openBonusReviewCommentModal(requestId) {
+    if (!hasPermission('review_bonuses')) return showToast('Нет прав на рассмотрение премий.', 'error');
+    const request = getBonusRequests().find(item => item.id === requestId);
+    if (!request) return showToast('Заявка не найдена.', 'error');
+    const modalWrapper = ensureBalanceModalWrapper();
+
+    modalWrapper.innerHTML = [
+        '<div class="modal-overlay" id="bonus_review_comment_overlay">',
+            '<div class="modal-content" style="max-width:520px" onclick="event.stopPropagation()">',
+                '<h3 style="margin-bottom:1rem;">Комментарий к решению</h3>',
+                '<div class="form-group">',
+                    '<label>Комментарий</label>',
+                    '<textarea class="form-control" id="bonus_review_comment" rows="4" maxlength="' + BONUS_REVIEW_COMMENT_MAX_LENGTH + '" placeholder="Напишите причину одобрения или отказа">' + escapeHTML(request.reviewComment || '') + '</textarea>',
+                    '<div class="text-muted" style="font-size:0.82rem; margin-top:0.35rem;">До ' + BONUS_REVIEW_COMMENT_MAX_LENGTH + ' символов.</div>',
+                '</div>',
+                '<div class="action-row mt-4">',
+                    '<button class="btn btn-primary" onclick="saveBonusReviewComment(\'' + request.id + '\')">Сохранить</button>',
+                    '<button class="btn btn-outline" onclick="closeBalanceModal()">Отмена</button>',
+                '</div>',
+            '</div>',
+        '</div>'
+    ].join('');
+    document.getElementById('bonus_review_comment_overlay').onclick = closeBalanceModal;
+}
+
+function saveBonusReviewComment(requestId) {
+    if (!hasPermission('review_bonuses')) return showToast('Нет прав на рассмотрение премий.', 'error');
+    const request = getBonusRequests().find(item => item.id === requestId);
+    if (!request) return showToast('Заявка не найдена.', 'error');
+    const reviewComment = (document.getElementById('bonus_review_comment')?.value || '').trim();
+    if (reviewComment.length > BONUS_REVIEW_COMMENT_MAX_LENGTH) return showToast('Комментарий слишком длинный.', 'error');
+    request.reviewComment = reviewComment;
+    db.save();
+    closeBalanceModal();
+    showToast('Комментарий сохранён.');
     renderBonuses(getDashboardContent());
 }
 
