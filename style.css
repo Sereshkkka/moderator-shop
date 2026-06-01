@@ -1075,6 +1075,46 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: 0.08em;
 }
 
+.bonus-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+}
+
+.bonus-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.3rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.58);
+  color: var(--text-muted);
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.bonus-filter-chip span {
+  color: var(--text-main);
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.bonus-filter-chip:hover {
+  border-color: rgba(99, 102, 241, 0.55);
+  color: var(--text-main);
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.bonus-filter-chip.active {
+  border-color: rgba(99, 102, 241, 0.75);
+  background: rgba(99, 102, 241, 0.22);
+  color: var(--primary);
+}
+
 .staff-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));

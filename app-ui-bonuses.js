@@ -27,7 +27,7 @@ function renderBonuses(container) {
     const totalPendingCount = allRequests.filter(request => request.status === 'pending').length;
     const filterButton = (filter, label, count) => {
         const activeClass = activeFilter === filter ? ' active' : '';
-        return '<button type="button" class="tab-header' + activeClass + '" style="border:0; margin-bottom:0;" onclick="setBonusRequestsFilter(\'' + filter + '\')">' + label + ' <span style="opacity:0.72;">' + count + '</span></button>';
+        return '<button type="button" class="bonus-filter-chip' + activeClass + '" onclick="setBonusRequestsFilter(\'' + filter + '\')">' + label + '<span>' + count + '</span></button>';
     };
 
     const rows = requests.length ? requests.map(request => {
@@ -77,7 +77,7 @@ function renderBonuses(container) {
             '<div class="staff-summary-card"><span class="staff-summary-label">На рассмотрении</span><strong>' + totalPendingCount + '</strong></div>',
             '<div class="staff-summary-card"><span class="staff-summary-label">Режим</span><strong>' + (canReviewBonus ? 'Рассмотрение' : 'Мои заявки') + '</strong></div>',
         '</div>',
-        '<div class="tab-headers mb-4" style="border-bottom:1px solid var(--border); margin-bottom:1.5rem;">',
+        '<div class="bonus-filter-bar mb-4">',
             filterButton('all', 'Все', totalCount),
             filterButton('pending', 'На рассмотрении', totalPendingCount),
             filterButton('approved', 'Одобрены', approvedCount),
