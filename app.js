@@ -23,6 +23,39 @@ const DEFAULT_BONUS_ROLE_PERMS = {
     tech_admin: ['access_bonuses', 'review_bonuses'],
     server_admin: ['access_bonuses', 'review_bonuses']
 };
+const DEFAULT_ROLE_LABELS = {
+    waiting: 'Ожидание',
+    vacation: 'В отпуске',
+    admin: 'Гл. Администратор',
+    server_admin: 'Админ Сервера',
+    tech_admin: 'Тех-Админ',
+    kurator: 'Куратор',
+    GM: 'Гл. Модератор',
+    gd: 'ГД',
+    'ST-moderator': 'Ст-Модератор',
+    moderator: 'Модератор',
+    helper: 'Хелпер'
+};
+
+function isBrokenRoleLabel(label) {
+    if (typeof label !== 'string') return true;
+    const normalized = label.trim();
+    if (!normalized) return true;
+    return /^[?\s-]+$/.test(normalized);
+}
+
+function repairKnownRoleLabels(data) {
+    if (!data || !Array.isArray(data.roles)) return false;
+    let changed = false;
+    data.roles.forEach(role => {
+        if (!role || !DEFAULT_ROLE_LABELS[role.id]) return;
+        if (isBrokenRoleLabel(role.label)) {
+            role.label = DEFAULT_ROLE_LABELS[role.id];
+            changed = true;
+        }
+    });
+    return changed;
+}
 
 function getStoredTheme() {
     try {
@@ -1220,6 +1253,7 @@ class Database {
             }
         }
 
+        repairKnownRoleLabels(this.data);
         initializeDefaultBonusPermissions(this.data);
 
         this.data.users.forEach(u => {
@@ -1472,6 +1506,7 @@ class Database {
         if (snapshot.logs) this.data.logs = snapshot.logs;
         if (snapshot.systemConfig) this.data.systemConfig = normalizeSystemConfig(snapshot.systemConfig);
         ensureDefaultAdminInData(this.data);
+        repairKnownRoleLabels(this.data);
         initializeDefaultBonusPermissions(this.data);
         this.touchData(false);
     }
@@ -2190,13 +2225,15 @@ function getBadge(roleId) {
         ? { label: 'В отпуске', color: '#14b8a6' }
         : { label: roleId, color: '#94a3b8' };
     const r = db.data.roles.find(x => x.id === roleId) || fallbackRole;
-    return '<span class="badge" style="background:rgba(255,255,255,0.1); border:1px solid ' + r.color + '; color:' + r.color + '">' + escapeHTML(r.label) + '</span>';
+    const label = isBrokenRoleLabel(r.label) && DEFAULT_ROLE_LABELS[roleId] ? DEFAULT_ROLE_LABELS[roleId] : r.label;
+    return '<span class="badge" style="background:rgba(255,255,255,0.1); border:1px solid ' + r.color + '; color:' + r.color + '">' + escapeHTML(label) + '</span>';
 }
 
 function getRoleLabel(roleId) {
     if (roleId === VACATION_ROLE_ID) return 'В отпуске';
     const role = db.data.roles.find(x => x.id === roleId);
-    return role ? role.label : roleId;
+    if (!role) return DEFAULT_ROLE_LABELS[roleId] || roleId;
+    return isBrokenRoleLabel(role.label) && DEFAULT_ROLE_LABELS[roleId] ? DEFAULT_ROLE_LABELS[roleId] : role.label;
 }
 
 function getAccountStatusBadge(user) {
