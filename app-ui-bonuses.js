@@ -189,20 +189,21 @@ function openBonusReviewCommentModal(requestId) {
     document.getElementById('bonus_review_comment_overlay').onclick = closeBalanceModal;
 }
 
-function saveBonusReviewComment(requestId) {
+async function saveBonusReviewComment(requestId) {
     if (!hasPermission('review_bonuses')) return showToast('Нет прав на рассмотрение премий.', 'error');
     const request = getBonusRequests().find(item => item.id === requestId);
     if (!request) return showToast('Заявка не найдена.', 'error');
     const reviewComment = (document.getElementById('bonus_review_comment')?.value || '').trim();
     if (reviewComment.length > BONUS_REVIEW_COMMENT_MAX_LENGTH) return showToast('Комментарий слишком длинный.', 'error');
     request.reviewComment = reviewComment;
-    db.save();
+    await db.save();
+    await db.flushRemoteSave();
     closeBalanceModal();
     showToast('Комментарий сохранён.');
     renderBonuses(getDashboardContent());
 }
 
-function submitBonusRequest() {
+async function submitBonusRequest() {
     const reasonLabel = (document.getElementById('bonus_reason_label')?.value || '').trim();
     const amount = Math.trunc(Number(document.getElementById('bonus_amount')?.value || 0));
     const comment = (document.getElementById('bonus_comment')?.value || '').trim();
@@ -234,13 +235,14 @@ function submitBonusRequest() {
         reviewComment: ''
     });
     db.data.systemConfig.bonusRequests = requests;
-    db.save();
+    await db.save();
+    await db.flushRemoteSave();
     closeBalanceModal();
     showToast('Заявка на премию отправлена.');
     renderBonuses(getDashboardContent());
 }
 
-function approveBonusRequest(requestId) {
+async function approveBonusRequest(requestId) {
     if (!hasPermission('review_bonuses')) return showToast('Нет прав на рассмотрение премий.', 'error');
     const requests = getBonusRequests();
     normalizeBonusPayoutState(requests);
@@ -251,12 +253,13 @@ function approveBonusRequest(requestId) {
     request.reviewedBy = currentUser.id;
     request.paidAt = null;
     request.paidBy = null;
-    db.save();
+    await db.save();
+    await db.flushRemoteSave();
     showToast('Премия одобрена. Теперь её можно выплатить.');
     renderBonuses(getDashboardContent());
 }
 
-function payBonusRequest(requestId) {
+async function payBonusRequest(requestId) {
     if (!hasPermission('review_bonuses')) return showToast('Нет прав на выплату премий.', 'error');
     const requests = getBonusRequests();
     normalizeBonusPayoutState(requests);
@@ -282,12 +285,13 @@ function payBonusRequest(requestId) {
         reason: 'Премия: ' + request.reasonLabel,
         date: new Date().toISOString()
     });
-    db.save();
+    await db.save();
+    await db.flushRemoteSave();
     showToast('Премия выплачена.');
     renderBonuses(getDashboardContent());
 }
 
-function rejectBonusRequest(requestId) {
+async function rejectBonusRequest(requestId) {
     if (!hasPermission('review_bonuses')) return showToast('Нет прав на рассмотрение премий.', 'error');
     const requests = getBonusRequests();
     normalizeBonusPayoutState(requests);
@@ -296,12 +300,13 @@ function rejectBonusRequest(requestId) {
     request.status = 'rejected';
     request.reviewedAt = new Date().toISOString();
     request.reviewedBy = currentUser.id;
-    db.save();
+    await db.save();
+    await db.flushRemoteSave();
     showToast('Заявка отклонена.');
     renderBonuses(getDashboardContent());
 }
 
-function deleteBonusRequest(requestId) {
+async function deleteBonusRequest(requestId) {
     const requests = getBonusRequests();
     const request = requests.find(item => item.id === requestId);
     if (!request) return;
@@ -309,7 +314,8 @@ function deleteBonusRequest(requestId) {
         return showToast('Нет прав на удаление этой заявки.', 'error');
     }
     db.data.systemConfig.bonusRequests = requests.filter(item => item.id !== requestId);
-    db.save();
+    await db.save();
+    await db.flushRemoteSave();
     showToast('Заявка удалена.');
     renderBonuses(getDashboardContent());
 }

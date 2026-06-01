@@ -192,10 +192,12 @@ function normalizeSystemConfig(config) {
             ticketNumber: request.ticketNumber || '',
             comment: request.comment || '',
             amount: Math.max(0, Math.trunc(Number(request.amount) || 0)),
-            status: ['pending', 'approved', 'rejected'].includes(request.status) ? request.status : 'pending',
+            status: ['pending', 'approved', 'paid', 'rejected'].includes(request.status) ? request.status : 'pending',
             createdAt: request.createdAt || new Date().toISOString(),
             reviewedAt: request.reviewedAt || null,
             reviewedBy: request.reviewedBy || null,
+            paidAt: request.paidAt || null,
+            paidBy: request.paidBy || null,
             reviewComment: request.reviewComment || ''
         })),
         bonusPermissionsInitialized: !!source.bonusPermissionsInitialized
