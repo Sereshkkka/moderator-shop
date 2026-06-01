@@ -4,26 +4,43 @@ const BONUS_REVIEW_COMMENT_MAX_LENGTH = 180;
 const BONUS_FILTER_STORAGE_KEY = 'bonus_requests_filter';
 
 function getBonusStatusBadge(status) {
+    if (status === 'paid') return '<span class="badge badge-success" style="background:var(--success);color:white">Выплачена</span>';
     if (status === 'approved') return '<span class="badge badge-success" style="background:var(--success);color:white">Одобрена</span>';
     if (status === 'rejected') return '<span class="badge badge-error">Отклонена</span>';
     return '<span class="badge" style="border:1px solid var(--warning); color:var(--warning); background:rgba(245,158,11,0.12)">На рассмотрении</span>';
 }
 
+function normalizeBonusPayoutState(requests) {
+    let changed = false;
+    requests.forEach(request => {
+        if (request.status === 'approved' && !Object.prototype.hasOwnProperty.call(request, 'paidAt')) {
+            request.status = 'paid';
+            request.paidAt = request.reviewedAt || request.createdAt || new Date().toISOString();
+            request.paidBy = request.reviewedBy || null;
+            changed = true;
+        }
+    });
+    if (changed) db.save();
+}
+
 function renderBonuses(container) {
     const canCreateBonus = hasPermission('access_bonuses');
     const canReviewBonus = hasPermission('review_bonuses');
+    const bonusRequests = getBonusRequests();
+    normalizeBonusPayoutState(bonusRequests);
     const allRequests = getBonusRequests()
         .filter(request => request.companyId === currentCompanyId)
         .filter(request => canReviewBonus || request.userId === currentUser.id)
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     const storedFilter = sessionStorage.getItem(BONUS_FILTER_STORAGE_KEY) || 'all';
-    const activeFilter = ['all', 'pending', 'approved', 'rejected'].includes(storedFilter) ? storedFilter : 'all';
+    const activeFilter = ['all', 'pending', 'approved', 'paid', 'rejected'].includes(storedFilter) ? storedFilter : 'all';
     const requests = activeFilter === 'all'
         ? allRequests
         : allRequests.filter(request => request.status === activeFilter);
     const totalCount = allRequests.length;
     const approvedCount = allRequests.filter(request => request.status === 'approved').length;
+    const paidCount = allRequests.filter(request => request.status === 'paid').length;
     const rejectedCount = allRequests.filter(request => request.status === 'rejected').length;
     const totalPendingCount = allRequests.filter(request => request.status === 'pending').length;
     const filterButton = (filter, label, count) => {
@@ -34,28 +51,41 @@ function renderBonuses(container) {
     const rows = requests.length ? requests.map(request => {
         const user = db.data.users.find(u => u.id === request.userId);
         const reviewer = request.reviewedBy ? db.data.users.find(u => u.id === request.reviewedBy) : null;
+        const payer = request.paidBy ? db.data.users.find(u => u.id === request.paidBy) : null;
         const deleteButton = (canReviewBonus || (request.userId === currentUser.id && request.status === 'pending'))
             ? '<button class="btn btn-outline" style="padding:0.35rem 0.7rem; width:auto;" onclick="deleteBonusRequest(\'' + request.id + '\')">Удалить</button>'
             : '';
         const commentButton = canReviewBonus
             ? '<button class="btn btn-outline" style="padding:0.35rem 0.7rem; width:auto;" onclick="openBonusReviewCommentModal(\'' + request.id + '\')">Комментарий</button>'
             : '';
-        const reviewActions = canReviewBonus && request.status === 'pending'
-            ? [
+        let reviewActions = '';
+        if (canReviewBonus && request.status === 'pending') {
+            reviewActions = [
                 '<div style="display:flex; gap:0.5rem; flex-wrap:wrap;">',
                     '<button class="btn btn-success" style="padding:0.35rem 0.7rem; width:auto;" onclick="approveBonusRequest(\'' + request.id + '\')">Одобрить</button>',
                     '<button class="btn btn-danger" style="padding:0.35rem 0.7rem; width:auto;" onclick="rejectBonusRequest(\'' + request.id + '\')">Отклонить</button>',
                     commentButton,
                     deleteButton,
                 '</div>'
-            ].join('')
-            : [
+            ].join('');
+        } else if (canReviewBonus && request.status === 'approved') {
+            reviewActions = [
                 '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">',
                     '<span style="color:var(--text-muted)">' + (reviewer ? escapeHTML(reviewer.username) : '—') + '</span>',
+                    '<button class="btn btn-success" style="padding:0.35rem 0.7rem; width:auto;" onclick="payBonusRequest(\'' + request.id + '\')">Выплатить</button>',
                     commentButton,
                     deleteButton,
                 '</div>'
             ].join('');
+        } else {
+            reviewActions = [
+                '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">',
+                    '<span style="color:var(--text-muted)">' + (request.status === 'paid' && payer ? escapeHTML(payer.username) : (reviewer ? escapeHTML(reviewer.username) : '—')) + '</span>',
+                    commentButton,
+                    deleteButton,
+                '</div>'
+            ].join('');
+        }
 
         return [
             '<tr>',
@@ -87,6 +117,7 @@ function renderBonuses(container) {
             filterButton('all', 'Все', totalCount),
             filterButton('pending', 'На рассмотрении', totalPendingCount),
             filterButton('approved', 'Одобрены', approvedCount),
+            filterButton('paid', 'Выплачены', paidCount),
             filterButton('rejected', 'Отклонены', rejectedCount),
         '</div>',
         '<div class="table-container">',
@@ -198,6 +229,8 @@ function submitBonusRequest() {
         createdAt: new Date().toISOString(),
         reviewedAt: null,
         reviewedBy: null,
+        paidAt: null,
+        paidBy: null,
         reviewComment: ''
     });
     db.data.systemConfig.bonusRequests = requests;
@@ -209,17 +242,35 @@ function submitBonusRequest() {
 
 function approveBonusRequest(requestId) {
     if (!hasPermission('review_bonuses')) return showToast('Нет прав на рассмотрение премий.', 'error');
-    const request = getBonusRequests().find(item => item.id === requestId);
+    const requests = getBonusRequests();
+    normalizeBonusPayoutState(requests);
+    const request = requests.find(item => item.id === requestId);
     if (!request || request.status !== 'pending') return;
+    request.status = 'approved';
+    request.reviewedAt = new Date().toISOString();
+    request.reviewedBy = currentUser.id;
+    request.paidAt = null;
+    request.paidBy = null;
+    db.save();
+    showToast('Премия одобрена. Теперь её можно выплатить.');
+    renderBonuses(getDashboardContent());
+}
+
+function payBonusRequest(requestId) {
+    if (!hasPermission('review_bonuses')) return showToast('Нет прав на выплату премий.', 'error');
+    const requests = getBonusRequests();
+    normalizeBonusPayoutState(requests);
+    const request = requests.find(item => item.id === requestId);
+    if (!request || request.status !== 'approved') return;
     const targetUser = db.data.users.find(user => user.id === request.userId);
     if (!targetUser) return showToast('Пользователь заявки не найден.', 'error');
     const oldBalance = Number(targetUser.coins || 0);
     const nextBalance = Math.min(MAX_USER_BALANCE, oldBalance + Number(request.amount || 0));
     targetUser.coins = nextBalance;
     if (currentUser.id === targetUser.id) currentUser.coins = nextBalance;
-    request.status = 'approved';
-    request.reviewedAt = new Date().toISOString();
-    request.reviewedBy = currentUser.id;
+    request.status = 'paid';
+    request.paidAt = new Date().toISOString();
+    request.paidBy = currentUser.id;
     db.data.logs.push({
         id: db.generateId(),
         userId: targetUser.id,
@@ -232,13 +283,15 @@ function approveBonusRequest(requestId) {
         date: new Date().toISOString()
     });
     db.save();
-    showToast('Премия одобрена и начислена.');
+    showToast('Премия выплачена.');
     renderBonuses(getDashboardContent());
 }
 
 function rejectBonusRequest(requestId) {
     if (!hasPermission('review_bonuses')) return showToast('Нет прав на рассмотрение премий.', 'error');
-    const request = getBonusRequests().find(item => item.id === requestId);
+    const requests = getBonusRequests();
+    normalizeBonusPayoutState(requests);
+    const request = requests.find(item => item.id === requestId);
     if (!request || request.status !== 'pending') return;
     request.status = 'rejected';
     request.reviewedAt = new Date().toISOString();
