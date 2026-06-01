@@ -1119,6 +1119,37 @@ textarea.form-control {
   color: var(--primary);
 }
 
+.bonus-comment-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.05rem;
+  height: 2.05rem;
+  flex: 0 0 2.05rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.32);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.bonus-comment-icon-btn svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linejoin: round;
+}
+
+.bonus-comment-icon-btn:hover {
+  border-color: rgba(99, 102, 241, 0.7);
+  background: rgba(99, 102, 241, 0.18);
+  color: var(--primary);
+}
+
 .staff-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));

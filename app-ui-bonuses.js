@@ -56,7 +56,7 @@ function renderBonuses(container) {
             ? '<button class="btn btn-outline" style="padding:0.35rem 0.7rem; width:auto;" onclick="deleteBonusRequest(\'' + request.id + '\')">Удалить</button>'
             : '';
         const commentButton = canReviewBonus
-            ? '<button class="btn btn-outline" style="padding:0.35rem 0.7rem; width:auto;" onclick="openBonusReviewCommentModal(\'' + request.id + '\')">Комментарий</button>'
+            ? '<button class="bonus-comment-icon-btn" type="button" aria-label="Оставить комментарий" onmouseenter="showCursorTooltip(event, \'Оставить комментарий\')" onmousemove="moveCursorTooltip(event)" onmouseleave="hideCursorTooltip()" onclick="openBonusReviewCommentModal(\'' + request.id + '\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5h14v9.5H13.4L12 17.2 10.6 15H5V5.5Z"></path></svg></button>'
             : '';
         let reviewActions = '';
         if (canReviewBonus && request.status === 'pending') {
