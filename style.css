@@ -1165,6 +1165,39 @@ textarea.form-control {
   gap: 0.5rem;
 }
 
+.bonus-amount-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.22rem;
+  color: var(--warning);
+  font-weight: 800;
+}
+
+.bonus-amount-cell > div:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.bonus-amount-old {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  text-decoration-color: rgba(248, 113, 113, 0.9);
+}
+
+.bonus-amount-new {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.bonus-amount-new strong {
+  color: var(--warning);
+}
+
 .staff-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));

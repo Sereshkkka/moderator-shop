@@ -3,6 +3,13 @@ const BONUS_REASON_MAX_LENGTH = 80;
 const BONUS_REVIEW_COMMENT_MAX_LENGTH = 180;
 const BONUS_FILTER_STORAGE_KEY = 'bonus_requests_filter';
 
+const BONUS_EDIT_ICON_SVG = [
+    '<svg class="icon-edit-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">',
+        '<path d="M12 20h9"></path>',
+        '<path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"></path>',
+    '</svg>'
+].join('');
+
 function getBonusStatusBadge(status) {
     if (status === 'paid') return '<span class="badge badge-success" style="background:var(--success);color:white">Выплачена</span>';
     if (status === 'approved') return '<span class="badge badge-success" style="background:var(--success);color:white">Одобрена</span>';
@@ -55,6 +62,18 @@ function renderBonuses(container) {
         const deleteButton = (canReviewBonus || (request.userId === currentUser.id && request.status === 'pending'))
             ? '<button class="btn btn-outline" style="padding:0.35rem 0.7rem; width:auto;" onclick="deleteBonusRequest(\'' + request.id + '\')">Удалить</button>'
             : '';
+        const amountEditButton = canReviewBonus && ['pending', 'approved'].includes(request.status)
+            ? '<button type="button" class="icon-edit-trigger" onclick="openBonusAmountEditModal(\'' + request.id + '\')" title="Изменить сумму" aria-label="Изменить сумму">' + BONUS_EDIT_ICON_SVG + '</button>'
+            : '';
+        const amountWasEdited = request.originalAmount !== null && request.originalAmount !== undefined && Number(request.originalAmount) !== Number(request.amount);
+        const amountContent = amountWasEdited
+            ? [
+                '<div class="bonus-amount-cell">',
+                    '<div><span class="bonus-amount-old">' + formatCoinAmount(request.originalAmount) + '</span>' + amountEditButton + '</div>',
+                    '<div class="bonus-amount-new">Изменено на: <strong>' + formatCoinAmount(request.amount) + '</strong></div>',
+                '</div>'
+            ].join('')
+            : '<div class="bonus-amount-cell"><strong>' + formatCoinAmount(request.amount) + '</strong>' + amountEditButton + '</div>';
         const commentButton = canReviewBonus
             ? '<button class="bonus-comment-icon-btn" type="button" aria-label="Оставить комментарий" onmouseenter="showCursorTooltip(event, \'Оставить комментарий\')" onmousemove="moveCursorTooltip(event)" onmouseleave="hideCursorTooltip()" onclick="openBonusReviewCommentModal(\'' + request.id + '\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5h14v9.5H13.4L12 17.2 10.6 15H5V5.5Z"></path></svg></button>'
             : '';
@@ -96,7 +115,7 @@ function renderBonuses(container) {
                 '<td><strong>' + escapeHTML(user ? user.username : 'Неизвестно') + '</strong><div class="text-muted" style="font-size:0.78rem;">' + new Date(request.createdAt).toLocaleString() + '</div></td>',
                 '<td style="max-width:220px; white-space:normal; overflow-wrap:anywhere;">' + escapeHTML(request.reasonLabel) + '</td>',
                 '<td style="max-width:360px; white-space:normal; overflow-wrap:anywhere;">' + escapeHTML(request.comment || '—') + '</td>',
-                '<td><strong style="color:var(--warning)">' + formatCoinAmount(request.amount) + '</strong></td>',
+                '<td>' + amountContent + '</td>',
                 '<td>' + getBonusStatusBadge(request.status) + (request.reviewComment ? '<div class="text-muted" style="font-size:0.78rem; margin-top:0.25rem;">' + escapeHTML(request.reviewComment) + '</div>' : '') + '</td>',
                 '<td>' + reviewActions + '</td>',
             '</tr>'
@@ -194,6 +213,55 @@ function openBonusReviewCommentModal(requestId) {
     document.getElementById('bonus_review_comment_overlay').onclick = closeBalanceModal;
 }
 
+function openBonusAmountEditModal(requestId) {
+    if (!hasPermission('review_bonuses')) return showToast('Нет прав на рассмотрение премий.', 'error');
+    const request = getBonusRequests().find(item => item.id === requestId);
+    if (!request) return showToast('Заявка не найдена.', 'error');
+    if (!['pending', 'approved'].includes(request.status)) return showToast('Сумму этой заявки уже нельзя изменить.', 'error');
+    const modalWrapper = ensureBalanceModalWrapper();
+
+    modalWrapper.innerHTML = [
+        '<div class="modal-overlay" id="bonus_amount_edit_overlay">',
+            '<div class="modal-content" style="max-width:480px" onclick="event.stopPropagation()">',
+                '<h3 style="margin-bottom:1rem;">Изменить сумму</h3>',
+                '<div class="form-group">',
+                    '<label>Новая сумма</label>',
+                    '<input type="number" class="form-control" id="bonus_amount_edit_value" min="1" max="' + MAX_USER_BALANCE + '" inputmode="numeric" value="' + Number(request.amount || 0) + '">',
+                '</div>',
+                '<div class="action-row mt-4">',
+                    '<button class="btn btn-primary" onclick="saveBonusAmountEdit(\'' + request.id + '\')">Сохранить</button>',
+                    '<button class="btn btn-outline" onclick="closeBalanceModal()">Отмена</button>',
+                '</div>',
+            '</div>',
+        '</div>'
+    ].join('');
+    document.getElementById('bonus_amount_edit_overlay').onclick = closeBalanceModal;
+}
+
+async function saveBonusAmountEdit(requestId) {
+    if (!hasPermission('review_bonuses')) return showToast('Нет прав на рассмотрение премий.', 'error');
+    const requests = getBonusRequests();
+    normalizeBonusPayoutState(requests);
+    const request = requests.find(item => item.id === requestId);
+    if (!request) return showToast('Заявка не найдена.', 'error');
+    if (!['pending', 'approved'].includes(request.status)) return showToast('Сумму этой заявки уже нельзя изменить.', 'error');
+    const nextAmount = Math.trunc(Number(document.getElementById('bonus_amount_edit_value')?.value || 0));
+    if (!Number.isFinite(nextAmount) || nextAmount <= 0) return showToast('Укажите корректную сумму.', 'error');
+    const clampedAmount = Math.min(nextAmount, MAX_USER_BALANCE);
+    if (Number(request.amount || 0) === clampedAmount) return showToast('Сумма не изменилась.', 'info');
+    if (request.originalAmount === null || request.originalAmount === undefined) {
+        request.originalAmount = Number(request.amount || 0);
+    }
+    request.amount = clampedAmount;
+    request.amountEditedAt = new Date().toISOString();
+    request.amountEditedBy = currentUser.id;
+    await db.save();
+    await db.flushRemoteSave();
+    closeBalanceModal();
+    showToast('Сумма заявки изменена.');
+    renderBonuses(getDashboardContent());
+}
+
 async function resolveBonusRequestWithComment(requestId, status) {
     if (!hasPermission('review_bonuses')) return showToast('Нет прав на рассмотрение премий.', 'error');
     const requests = getBonusRequests();
@@ -241,6 +309,9 @@ async function submitBonusRequest() {
         ticketNumber: '',
         comment,
         amount: Math.min(amount, MAX_USER_BALANCE),
+        originalAmount: null,
+        amountEditedAt: null,
+        amountEditedBy: null,
         status: 'pending',
         createdAt: new Date().toISOString(),
         reviewedAt: null,
