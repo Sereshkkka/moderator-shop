@@ -61,27 +61,31 @@ function renderBonuses(container) {
         let reviewActions = '';
         if (canReviewBonus && request.status === 'pending') {
             reviewActions = [
-                '<div style="display:flex; gap:0.5rem; flex-wrap:wrap;">',
-                    '<button class="btn btn-success" style="padding:0.35rem 0.7rem; width:auto;" onclick="approveBonusRequest(\'' + request.id + '\')">Одобрить</button>',
-                    '<button class="btn btn-danger" style="padding:0.35rem 0.7rem; width:auto;" onclick="rejectBonusRequest(\'' + request.id + '\')">Отклонить</button>',
-                    commentButton,
+                '<div class="bonus-actions-row">',
+                    '<div class="bonus-actions-main">',
+                        '<button class="btn btn-success" style="padding:0.35rem 0.7rem; width:auto;" onclick="approveBonusRequest(\'' + request.id + '\')">Одобрить</button>',
+                        commentButton,
+                        '<button class="btn btn-danger" style="padding:0.35rem 0.7rem; width:auto;" onclick="rejectBonusRequest(\'' + request.id + '\')">Отклонить</button>',
+                    '</div>',
                     deleteButton,
                 '</div>'
             ].join('');
         } else if (canReviewBonus && request.status === 'approved') {
             reviewActions = [
-                '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">',
-                    '<span style="color:var(--text-muted)">' + (reviewer ? escapeHTML(reviewer.username) : '—') + '</span>',
-                    '<button class="btn btn-success" style="padding:0.35rem 0.7rem; width:auto;" onclick="payBonusRequest(\'' + request.id + '\')">Выплатить</button>',
-                    commentButton,
+                '<div class="bonus-actions-row">',
+                    '<div class="bonus-actions-main">',
+                        '<span style="color:var(--text-muted)">' + (reviewer ? escapeHTML(reviewer.username) : '—') + '</span>',
+                        '<button class="btn btn-success" style="padding:0.35rem 0.7rem; width:auto;" onclick="payBonusRequest(\'' + request.id + '\')">Выплатить</button>',
+                    '</div>',
                     deleteButton,
                 '</div>'
             ].join('');
         } else {
             reviewActions = [
-                '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">',
-                    '<span style="color:var(--text-muted)">' + (request.status === 'paid' && payer ? escapeHTML(payer.username) : (reviewer ? escapeHTML(reviewer.username) : '—')) + '</span>',
-                    commentButton,
+                '<div class="bonus-actions-row">',
+                    '<div class="bonus-actions-main">',
+                        '<span style="color:var(--text-muted)">' + (request.status === 'paid' && payer ? escapeHTML(payer.username) : (reviewer ? escapeHTML(reviewer.username) : '—')) + '</span>',
+                    '</div>',
                     deleteButton,
                 '</div>'
             ].join('');
@@ -180,7 +184,8 @@ function openBonusReviewCommentModal(requestId) {
                     '<div class="text-muted" style="font-size:0.82rem; margin-top:0.35rem;">До ' + BONUS_REVIEW_COMMENT_MAX_LENGTH + ' символов.</div>',
                 '</div>',
                 '<div class="action-row mt-4">',
-                    '<button class="btn btn-primary" onclick="saveBonusReviewComment(\'' + request.id + '\')">Сохранить</button>',
+                    '<button class="btn btn-primary" onclick="resolveBonusRequestWithComment(\'' + request.id + '\', \'approved\')">Одобрить + коммент</button>',
+                    '<button class="btn btn-danger" onclick="resolveBonusRequestWithComment(\'' + request.id + '\', \'rejected\')">Отклонить + коммент</button>',
                     '<button class="btn btn-outline" onclick="closeBalanceModal()">Отмена</button>',
                 '</div>',
             '</div>',
@@ -189,17 +194,27 @@ function openBonusReviewCommentModal(requestId) {
     document.getElementById('bonus_review_comment_overlay').onclick = closeBalanceModal;
 }
 
-async function saveBonusReviewComment(requestId) {
+async function resolveBonusRequestWithComment(requestId, status) {
     if (!hasPermission('review_bonuses')) return showToast('Нет прав на рассмотрение премий.', 'error');
-    const request = getBonusRequests().find(item => item.id === requestId);
+    const requests = getBonusRequests();
+    normalizeBonusPayoutState(requests);
+    const request = requests.find(item => item.id === requestId);
     if (!request) return showToast('Заявка не найдена.', 'error');
+    if (request.status !== 'pending') return showToast('Эта заявка уже рассмотрена.', 'error');
+    if (!['approved', 'rejected'].includes(status)) return;
     const reviewComment = (document.getElementById('bonus_review_comment')?.value || '').trim();
+    if (!reviewComment) return showToast('Добавьте комментарий к решению.', 'error');
     if (reviewComment.length > BONUS_REVIEW_COMMENT_MAX_LENGTH) return showToast('Комментарий слишком длинный.', 'error');
     request.reviewComment = reviewComment;
+    request.status = status;
+    request.reviewedAt = new Date().toISOString();
+    request.reviewedBy = currentUser.id;
+    request.paidAt = null;
+    request.paidBy = null;
     await db.save();
     await db.flushRemoteSave();
     closeBalanceModal();
-    showToast('Комментарий сохранён.');
+    showToast(status === 'approved' ? 'Премия одобрена с комментарием.' : 'Заявка отклонена с комментарием.');
     renderBonuses(getDashboardContent());
 }
 
