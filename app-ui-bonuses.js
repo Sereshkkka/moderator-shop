@@ -67,10 +67,10 @@ function renderBonuses(container) {
             ? [
                 '<div class="bonus-amount-cell">',
                     '<div><span class="bonus-amount-old">' + formatCoinAmount(request.originalAmount) + '</span>' + amountEditButton + '</div>',
-                    '<div class="bonus-amount-new">Изменено на: <strong>' + formatCoinAmount(request.amount) + '</strong></div>',
+                    '<div class="bonus-amount-new">Изменено на: <strong>' + formatCoinAmount(request.amount) + '</strong>' + amountEditButton + '</div>',
                 '</div>'
             ].join('')
-            : '<div class="bonus-amount-cell"><strong>' + formatCoinAmount(request.amount) + '</strong>' + amountEditButton + '</div>';
+            : '<div class="bonus-amount-cell"><div><strong>' + formatCoinAmount(request.amount) + '</strong>' + amountEditButton + '</div></div>';
         const commentButton = canReviewBonus
             ? '<button class="bonus-comment-icon-btn" type="button" aria-label="Оставить комментарий" onmouseenter="showCursorTooltip(event, \'Оставить комментарий\')" onmousemove="moveCursorTooltip(event)" onmouseleave="hideCursorTooltip()" onclick="openBonusReviewCommentModal(\'' + request.id + '\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5h14v9.5H13.4L12 17.2 10.6 15H5V5.5Z"></path></svg></button>'
             : '';

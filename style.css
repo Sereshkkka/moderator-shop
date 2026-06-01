@@ -1188,6 +1188,9 @@ textarea.form-control {
 }
 
 .bonus-amount-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   color: var(--text-muted);
   font-size: 0.78rem;
   font-weight: 700;
