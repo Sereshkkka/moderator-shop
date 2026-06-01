@@ -1,5 +1,6 @@
 const BONUS_COMMENT_MAX_LENGTH = 120;
 const BONUS_REASON_MAX_LENGTH = 80;
+const BONUS_FILTER_STORAGE_KEY = 'bonus_requests_filter';
 
 function getBonusStatusBadge(status) {
     if (status === 'approved') return '<span class="badge badge-success" style="background:var(--success);color:white">Одобрена</span>';
@@ -10,12 +11,25 @@ function getBonusStatusBadge(status) {
 function renderBonuses(container) {
     const canCreateBonus = hasPermission('access_bonuses');
     const canReviewBonus = hasPermission('review_bonuses');
-    const requests = getBonusRequests()
+    const allRequests = getBonusRequests()
         .filter(request => request.companyId === currentCompanyId)
         .filter(request => canReviewBonus || request.userId === currentUser.id)
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    const pendingCount = requests.filter(request => request.status === 'pending').length;
+    const storedFilter = sessionStorage.getItem(BONUS_FILTER_STORAGE_KEY) || 'all';
+    const activeFilter = ['all', 'pending', 'approved', 'rejected'].includes(storedFilter) ? storedFilter : 'all';
+    const requests = activeFilter === 'all'
+        ? allRequests
+        : allRequests.filter(request => request.status === activeFilter);
+    const totalCount = allRequests.length;
+    const approvedCount = allRequests.filter(request => request.status === 'approved').length;
+    const rejectedCount = allRequests.filter(request => request.status === 'rejected').length;
+    const totalPendingCount = allRequests.filter(request => request.status === 'pending').length;
+    const filterButton = (filter, label, count) => {
+        const activeClass = activeFilter === filter ? ' active' : '';
+        return '<button type="button" class="tab-header' + activeClass + '" style="border:0; margin-bottom:0;" onclick="setBonusRequestsFilter(\'' + filter + '\')">' + label + ' <span style="opacity:0.72;">' + count + '</span></button>';
+    };
+
     const rows = requests.length ? requests.map(request => {
         const user = db.data.users.find(u => u.id === request.userId);
         const reviewer = request.reviewedBy ? db.data.users.find(u => u.id === request.reviewedBy) : null;
@@ -59,9 +73,15 @@ function renderBonuses(container) {
         '</div>',
         '<div class="glass-panel mb-4" style="max-width:100%; padding:1rem 1.25rem; border:1px solid rgba(239,68,68,0.35); background:rgba(239,68,68,0.10); color:#fecaca; font-weight:700;">ВНИМАНИЕ: злоупотребление либо оставление некоректных заявок карается штрафом/выговором</div>',
         '<div class="staff-summary-row">',
-            '<div class="staff-summary-card"><span class="staff-summary-label">Всего заявок</span><strong>' + requests.length + '</strong></div>',
-            '<div class="staff-summary-card"><span class="staff-summary-label">На рассмотрении</span><strong>' + pendingCount + '</strong></div>',
+            '<div class="staff-summary-card"><span class="staff-summary-label">Всего заявок</span><strong>' + totalCount + '</strong></div>',
+            '<div class="staff-summary-card"><span class="staff-summary-label">На рассмотрении</span><strong>' + totalPendingCount + '</strong></div>',
             '<div class="staff-summary-card"><span class="staff-summary-label">Режим</span><strong>' + (canReviewBonus ? 'Рассмотрение' : 'Мои заявки') + '</strong></div>',
+        '</div>',
+        '<div class="tab-headers mb-4" style="border-bottom:1px solid var(--border); margin-bottom:1.5rem;">',
+            filterButton('all', 'Все', totalCount),
+            filterButton('pending', 'На рассмотрении', totalPendingCount),
+            filterButton('approved', 'Одобрены', approvedCount),
+            filterButton('rejected', 'Отклонены', rejectedCount),
         '</div>',
         '<div class="table-container">',
             '<table>',
@@ -100,6 +120,11 @@ function openBonusRequestModal() {
         '</div>'
     ].join('');
     document.getElementById('bonus_overlay').onclick = closeBalanceModal;
+}
+
+function setBonusRequestsFilter(filter) {
+    sessionStorage.setItem(BONUS_FILTER_STORAGE_KEY, filter);
+    renderBonuses(getDashboardContent());
 }
 
 function submitBonusRequest() {
