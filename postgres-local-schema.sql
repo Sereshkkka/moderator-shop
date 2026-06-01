@@ -84,7 +84,6 @@ create table if not exists system_config (
     id boolean primary key default true,
     webhook_url text not null default '',
     avatar_url_template text not null default 'https://skins.mcskill.net/?name=insert&mode=5&fx=size&fy=size',
-    bonus_reasons jsonb not null default '[]'::jsonb,
     bonus_requests jsonb not null default '[]'::jsonb,
     bonus_permissions_initialized boolean not null default false,
     constraint system_config_singleton check (id = true)

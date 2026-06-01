@@ -13,10 +13,6 @@ const DISCORD_OAUTH_LINK_USER_KEY = 'discord_oauth_link_user_id';
 const POST_RELOAD_TOAST_KEY = 'post_reload_toast';
 const DEFAULT_AVATAR_URL_TEMPLATE = 'https://skins.mcskill.net/?name=insert&mode=5&fx=size&fy=size';
 const THEME_STORAGE_KEY = 'modshop_theme';
-const DEFAULT_BONUS_REASONS = [
-    { id: 'forum_topic', label: 'разбор темы на форуме', fieldType: 'forum' },
-    { id: 'ticket_solution', label: 'решение тикета', fieldType: 'ticket' }
-];
 const DEFAULT_BONUS_ROLE_PERMS = {
     helper: ['access_bonuses'],
     moderator: ['access_bonuses'],
@@ -181,18 +177,10 @@ function normalizeAvatarTemplate(template) {
 
 function normalizeSystemConfig(config) {
     const source = config && typeof config === 'object' ? config : {};
-    const bonusReasons = Array.isArray(source.bonusReasons) && source.bonusReasons.length
-        ? source.bonusReasons
-        : DEFAULT_BONUS_REASONS;
     const bonusRequests = Array.isArray(source.bonusRequests) ? source.bonusRequests : [];
     return {
         webhookUrl: source.webhookUrl || '',
         avatarUrlTemplate: normalizeAvatarTemplate(source.avatarUrlTemplate),
-        bonusReasons: bonusReasons.map(reason => ({
-            id: reason.id || ('bonus_reason_' + Math.random().toString(36).slice(2, 9)),
-            label: String(reason.label || '').trim() || 'Новая причина',
-            fieldType: ['forum', 'ticket', 'none'].includes(reason.fieldType) ? reason.fieldType : 'none'
-        })),
         bonusRequests: bonusRequests.map(request => ({
             id: request.id || ('bonus_request_' + Math.random().toString(36).slice(2, 9)),
             companyId: request.companyId || 'comp_initial',
@@ -238,12 +226,6 @@ function initializeDefaultBonusPermissions(data) {
 
 function getAvatarUrlTemplate() {
     return normalizeAvatarTemplate(db && db.data && db.data.systemConfig ? db.data.systemConfig.avatarUrlTemplate : '');
-}
-
-function getBonusReasons() {
-    if (!db || !db.data) return DEFAULT_BONUS_REASONS;
-    db.data.systemConfig = normalizeSystemConfig(db.data.systemConfig);
-    return db.data.systemConfig.bonusReasons;
 }
 
 function getBonusRequests() {
@@ -501,7 +483,6 @@ class SupabaseTableGateway {
         return normalizeSystemConfig({
             webhookUrl: row && row.webhook_url ? row.webhook_url : '',
             avatarUrlTemplate: row && row.avatar_url_template ? row.avatar_url_template : '',
-            bonusReasons: row && Array.isArray(row.bonus_reasons) ? row.bonus_reasons : undefined,
             bonusRequests: row && Array.isArray(row.bonus_requests) ? row.bonus_requests : [],
             bonusPermissionsInitialized: !!(row && row.bonus_permissions_initialized)
         });

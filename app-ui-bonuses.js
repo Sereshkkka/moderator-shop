@@ -4,16 +4,6 @@ function getBonusStatusBadge(status) {
     return '<span class="badge" style="border:1px solid var(--warning); color:var(--warning); background:rgba(245,158,11,0.12)">На рассмотрении</span>';
 }
 
-function getBonusReasonById(reasonId) {
-    return getBonusReasons().find(reason => reason.id === reasonId) || null;
-}
-
-function getBonusFieldLabel(fieldType) {
-    if (fieldType === 'forum') return 'Ссылка на тему';
-    if (fieldType === 'ticket') return 'Номер тикета';
-    return 'Детали';
-}
-
 function renderBonuses(container) {
     const canCreateBonus = hasPermission('access_bonuses');
     const canReviewBonus = hasPermission('review_bonuses');
@@ -26,9 +16,6 @@ function renderBonuses(container) {
     const rows = requests.length ? requests.map(request => {
         const user = db.data.users.find(u => u.id === request.userId);
         const reviewer = request.reviewedBy ? db.data.users.find(u => u.id === request.reviewedBy) : null;
-        const detailText = request.fieldType === 'forum'
-            ? request.forumUrl
-            : (request.fieldType === 'ticket' ? request.ticketNumber : '');
         const reviewActions = canReviewBonus && request.status === 'pending'
             ? [
                 '<div style="display:flex; gap:0.5rem; flex-wrap:wrap;">',
@@ -41,7 +28,7 @@ function renderBonuses(container) {
         return [
             '<tr>',
                 '<td><strong>' + escapeHTML(user ? user.username : 'Неизвестно') + '</strong><div class="text-muted" style="font-size:0.78rem;">' + new Date(request.createdAt).toLocaleString() + '</div></td>',
-                '<td>' + escapeHTML(request.reasonLabel) + (detailText ? '<div class="text-muted" style="font-size:0.78rem; margin-top:0.25rem;">' + getBonusFieldLabel(request.fieldType) + ': ' + escapeHTML(detailText) + '</div>' : '') + '</td>',
+                '<td>' + escapeHTML(request.reasonLabel) + '</td>',
                 '<td>' + escapeHTML(request.comment || '—') + '</td>',
                 '<td><strong style="color:var(--warning)">' + formatCoinAmount(request.amount) + '</strong></td>',
                 '<td>' + getBonusStatusBadge(request.status) + (request.reviewComment ? '<div class="text-muted" style="font-size:0.78rem; margin-top:0.25rem;">' + escapeHTML(request.reviewComment) + '</div>' : '') + '</td>',
@@ -74,12 +61,6 @@ function renderBonuses(container) {
 }
 
 function openBonusRequestModal() {
-    const reasons = getBonusReasons();
-    if (!reasons.length) {
-        showToast('Нет доступных причин для заявки.', 'error');
-        return;
-    }
-    const options = reasons.map(reason => '<option value="' + reason.id + '">' + escapeHTML(reason.label) + '</option>').join('');
     const modalWrapper = ensureBalanceModalWrapper();
 
     modalWrapper.innerHTML = [
@@ -88,17 +69,14 @@ function openBonusRequestModal() {
                 '<h3 style="margin-bottom:1rem;">Заявка на премию</h3>',
                 '<div class="form-group">',
                     '<label>Причина заявки</label>',
-                    '<select class="form-control" id="bonus_reason" onchange="updateBonusRequestFields()">',
-                        options,
-                    '</select>',
-                '</div>',
-                '<div id="bonusDynamicField"></div>',
-                '<div class="form-group">',
-                    '<label>Комментарий</label>',
-                    '<textarea class="form-control" id="bonus_comment" rows="4" maxlength="500" placeholder="Кратко опишите, за что запрашивается премия"></textarea>',
+                    '<input type="text" class="form-control" id="bonus_reason_label" maxlength="120" placeholder="Например, разбор темы на форуме">',
                 '</div>',
                 '<div class="form-group">',
-                    '<label>Запрашиваемая сумма поощрения</label>',
+                    '<label>Комментарий (ссылка на тему / #тикета)</label>',
+                    '<textarea class="form-control" id="bonus_comment" rows="4" maxlength="500" placeholder="Добавьте ссылку, номер тикета или краткий комментарий"></textarea>',
+                '</div>',
+                '<div class="form-group">',
+                    '<label>Сумма надбавки</label>',
                     '<input type="number" class="form-control" id="bonus_amount" min="1" max="' + MAX_USER_BALANCE + '" inputmode="numeric" placeholder="Например, 100">',
                 '</div>',
                 '<div class="action-row mt-4">',
@@ -109,47 +87,27 @@ function openBonusRequestModal() {
         '</div>'
     ].join('');
     document.getElementById('bonus_overlay').onclick = closeBalanceModal;
-    updateBonusRequestFields();
-}
-
-function updateBonusRequestFields() {
-    const reason = getBonusReasonById(document.getElementById('bonus_reason')?.value);
-    const wrap = document.getElementById('bonusDynamicField');
-    if (!wrap || !reason) return;
-    if (reason.fieldType === 'forum') {
-        wrap.innerHTML = '<div class="form-group"><label>Ссылка на тему на форуме</label><input type="url" class="form-control" id="bonus_forum_url" placeholder="https://..."></div>';
-        return;
-    }
-    if (reason.fieldType === 'ticket') {
-        wrap.innerHTML = '<div class="form-group"><label>Номер тикета</label><input type="text" class="form-control" id="bonus_ticket_number" maxlength="80" placeholder="Например, #1234"></div>';
-        return;
-    }
-    wrap.innerHTML = '';
 }
 
 function submitBonusRequest() {
-    const reason = getBonusReasonById(document.getElementById('bonus_reason')?.value);
-    if (!reason) return showToast('Выберите причину заявки.', 'error');
+    const reasonLabel = (document.getElementById('bonus_reason_label')?.value || '').trim();
     const amount = Math.trunc(Number(document.getElementById('bonus_amount')?.value || 0));
     const comment = (document.getElementById('bonus_comment')?.value || '').trim();
-    const forumUrl = (document.getElementById('bonus_forum_url')?.value || '').trim();
-    const ticketNumber = (document.getElementById('bonus_ticket_number')?.value || '').trim();
 
-    if (reason.fieldType === 'forum' && !forumUrl) return showToast('Укажите ссылку на тему форума.', 'error');
-    if (reason.fieldType === 'ticket' && !ticketNumber) return showToast('Укажите номер тикета.', 'error');
+    if (!reasonLabel) return showToast('Укажите причину заявки.', 'error');
     if (!comment) return showToast('Добавьте комментарий к заявке.', 'error');
-    if (!Number.isFinite(amount) || amount <= 0) return showToast('Укажите корректную сумму премии.', 'error');
+    if (!Number.isFinite(amount) || amount <= 0) return showToast('Укажите корректную сумму надбавки.', 'error');
 
     const requests = getBonusRequests();
     requests.push({
         id: db.generateId(),
         companyId: currentCompanyId,
         userId: currentUser.id,
-        reasonId: reason.id,
-        reasonLabel: reason.label,
-        fieldType: reason.fieldType,
-        forumUrl,
-        ticketNumber,
+        reasonId: '',
+        reasonLabel,
+        fieldType: 'none',
+        forumUrl: '',
+        ticketNumber: '',
         comment,
         amount: Math.min(amount, MAX_USER_BALANCE),
         status: 'pending',
@@ -206,51 +164,3 @@ function rejectBonusRequest(requestId) {
     renderBonuses(getDashboardContent());
 }
 
-function renderBonusReasonsSettings() {
-    const reasons = getBonusReasons();
-    const rows = reasons.map(reason => [
-        '<tr>',
-            '<td>' + escapeHTML(reason.label) + '</td>',
-            '<td>' + escapeHTML(getBonusFieldLabel(reason.fieldType)) + '</td>',
-            '<td><button class="btn btn-danger" style="padding:0.25rem 0.6rem; width:auto;" onclick="deleteBonusReason(\'' + reason.id + '\')">Удалить</button></td>',
-        '</tr>'
-    ].join('')).join('');
-
-    return [
-        '<div class="glass-panel" style="padding:1.5rem; max-width:760px; margin-top:1rem;">',
-            '<h4 style="margin-bottom:1rem;">Причины заявок на премии</h4>',
-            '<div class="table-container" style="margin-bottom:1rem;">',
-                '<table>',
-                    '<thead><tr><th>Причина</th><th>Поле заявки</th><th>Действие</th></tr></thead>',
-                    '<tbody>' + (rows || '<tr><td colspan="3">Причин пока нет.</td></tr>') + '</tbody>',
-                '</table>',
-            '</div>',
-            '<div style="display:grid; grid-template-columns:minmax(0,1fr) 180px auto; gap:0.75rem; align-items:end;">',
-                '<label style="display:grid; gap:0.45rem;"><span style="font-weight:600;">Новая причина</span><input id="bonus_reason_label" class="form-control" placeholder="Например, помощь игроку"></label>',
-                '<label style="display:grid; gap:0.45rem;"><span style="font-weight:600;">Тип поля</span><select id="bonus_reason_type" class="form-control"><option value="none">Только комментарий</option><option value="forum">Ссылка на форум</option><option value="ticket">Номер тикета</option></select></label>',
-                '<button class="btn btn-primary" style="width:auto;" onclick="addBonusReason()">Добавить</button>',
-            '</div>',
-        '</div>'
-    ].join('');
-}
-
-function addBonusReason() {
-    const label = (document.getElementById('bonus_reason_label')?.value || '').trim();
-    const fieldType = document.getElementById('bonus_reason_type')?.value || 'none';
-    if (!label) return showToast('Введите название причины.', 'error');
-    const reasons = getBonusReasons();
-    reasons.push({ id: db.generateId(), label, fieldType });
-    db.data.systemConfig.bonusReasons = reasons;
-    db.save();
-    showToast('Причина премии добавлена.');
-    renderGlobalSettings(document.getElementById('globalHubContent'));
-}
-
-function deleteBonusReason(reasonId) {
-    const reasons = getBonusReasons();
-    if (reasons.length <= 1) return showToast('Должна остаться хотя бы одна причина.', 'error');
-    db.data.systemConfig.bonusReasons = reasons.filter(reason => reason.id !== reasonId);
-    db.save();
-    showToast('Причина премии удалена.');
-    renderGlobalSettings(document.getElementById('globalHubContent'));
-}

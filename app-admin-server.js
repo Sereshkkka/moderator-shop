@@ -42,7 +42,6 @@ window.saveSystemConfig = async () => {
                 ...(updatedConfig || {}),
                 webhookUrl: updatedConfig && updatedConfig.webhookUrl !== undefined ? updatedConfig.webhookUrl : newWb,
                 avatarUrlTemplate: updatedConfig && updatedConfig.avatarUrlTemplate !== undefined ? updatedConfig.avatarUrlTemplate : newAvatarTemplate,
-                bonusReasons: getBonusReasons(),
                 bonusRequests: getBonusRequests(),
                 bonusPermissionsInitialized: db.data.systemConfig && db.data.systemConfig.bonusPermissionsInitialized
             });
@@ -57,7 +56,6 @@ window.saveSystemConfig = async () => {
     db.data.systemConfig = normalizeSystemConfig({
         webhookUrl: newWb,
         avatarUrlTemplate: newAvatarTemplate,
-        bonusReasons: getBonusReasons(),
         bonusRequests: getBonusRequests(),
         bonusPermissionsInitialized: db.data.systemConfig && db.data.systemConfig.bonusPermissionsInitialized
     });
