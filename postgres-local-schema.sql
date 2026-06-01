@@ -84,6 +84,9 @@ create table if not exists system_config (
     id boolean primary key default true,
     webhook_url text not null default '',
     avatar_url_template text not null default 'https://skins.mcskill.net/?name=insert&mode=5&fx=size&fy=size',
+    bonus_reasons jsonb not null default '[]'::jsonb,
+    bonus_requests jsonb not null default '[]'::jsonb,
+    bonus_permissions_initialized boolean not null default false,
     constraint system_config_singleton check (id = true)
 );
 
@@ -97,14 +100,14 @@ on conflict (id) do nothing;
 
 insert into roles (id, label, tier, color, perms) values
 ('waiting', 'Ожидание', 0, '#f59e0b', '[]'::jsonb),
-('helper', 'Хелпер', 1, '#10b881', '[]'::jsonb),
-('moderator', 'Модератор', 2, '#38bdf8', '["access_mod_panel"]'::jsonb),
-('ST-moderator', 'Ст-Модератор', 3, '#6366f1', '["access_mod_panel", "view_logs", "access_archive"]'::jsonb),
-('gd', 'ГД', 4, '#10b981', '["access_mod_panel", "view_logs", "access_archive"]'::jsonb),
-('GM', 'Гл. Модератор', 4, '#a855f7', '["access_mod_panel", "view_logs", "access_archive"]'::jsonb),
-('kurator', 'Куратор', 5, '#eab308', '["access_mod_panel", "view_logs", "edit_balance", "access_archive"]'::jsonb),
-('tech_admin', 'Тех-Админ', 6, '#06b6d4', '["access_mod_panel", "manage_store", "view_logs", "edit_balance", "access_archive"]'::jsonb),
-('server_admin', 'Админ Сервера', 7, '#f59e0b', '["access_mod_panel", "generate_codes", "manage_store", "view_logs", "edit_balance", "edit_roles", "access_archive"]'::jsonb),
+('helper', 'Хелпер', 1, '#10b881', '["access_bonuses"]'::jsonb),
+('moderator', 'Модератор', 2, '#38bdf8', '["access_mod_panel", "access_bonuses"]'::jsonb),
+('ST-moderator', 'Ст-Модератор', 3, '#6366f1', '["access_mod_panel", "view_logs", "access_archive", "access_bonuses"]'::jsonb),
+('gd', 'ГД', 4, '#10b981', '["access_mod_panel", "view_logs", "access_archive", "access_bonuses", "review_bonuses"]'::jsonb),
+('GM', 'Гл. Модератор', 4, '#a855f7', '["access_mod_panel", "view_logs", "access_archive", "access_bonuses", "review_bonuses"]'::jsonb),
+('kurator', 'Куратор', 5, '#eab308', '["access_mod_panel", "view_logs", "edit_balance", "access_archive", "access_bonuses", "review_bonuses"]'::jsonb),
+('tech_admin', 'Тех-Админ', 6, '#06b6d4', '["access_mod_panel", "manage_store", "view_logs", "edit_balance", "access_archive", "access_bonuses", "review_bonuses"]'::jsonb),
+('server_admin', 'Админ Сервера', 7, '#f59e0b', '["access_mod_panel", "generate_codes", "manage_store", "view_logs", "edit_balance", "edit_roles", "access_archive", "access_bonuses", "review_bonuses"]'::jsonb),
 ('admin', 'Гл. Администратор', 8, '#ec4899', '["all"]'::jsonb)
 on conflict (id) do update set
     label = excluded.label,

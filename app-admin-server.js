@@ -38,9 +38,13 @@ window.saveSystemConfig = async () => {
             const updatedConfig = await authGateway.rpcAdminUpdateSystemWebhook(authSession.access_token, {
                 webhook_value: newWb
             });
-            db.data.systemConfig = normalizeSystemConfig(updatedConfig || {
-                webhookUrl: newWb,
-                avatarUrlTemplate: newAvatarTemplate
+            db.data.systemConfig = normalizeSystemConfig({
+                ...(updatedConfig || {}),
+                webhookUrl: updatedConfig && updatedConfig.webhookUrl !== undefined ? updatedConfig.webhookUrl : newWb,
+                avatarUrlTemplate: updatedConfig && updatedConfig.avatarUrlTemplate !== undefined ? updatedConfig.avatarUrlTemplate : newAvatarTemplate,
+                bonusReasons: getBonusReasons(),
+                bonusRequests: getBonusRequests(),
+                bonusPermissionsInitialized: db.data.systemConfig && db.data.systemConfig.bonusPermissionsInitialized
             });
             db.data.systemConfig.avatarUrlTemplate = newAvatarTemplate;
             db.saveLocal();
@@ -52,7 +56,10 @@ window.saveSystemConfig = async () => {
     }
     db.data.systemConfig = normalizeSystemConfig({
         webhookUrl: newWb,
-        avatarUrlTemplate: newAvatarTemplate
+        avatarUrlTemplate: newAvatarTemplate,
+        bonusReasons: getBonusReasons(),
+        bonusRequests: getBonusRequests(),
+        bonusPermissionsInitialized: db.data.systemConfig && db.data.systemConfig.bonusPermissionsInitialized
     });
     db.save();
     showToast('Настройки системы успешно обновлены.');

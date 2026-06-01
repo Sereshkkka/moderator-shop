@@ -277,6 +277,8 @@ const PERMS_LIST = [
     { key: 'view_logs', label: 'Просмотр Транзакций' },
     { key: 'edit_balance', label: 'Управление Балансом' },
     { key: 'edit_roles', label: 'Управление Правами' },
+    { key: 'access_bonuses', label: 'Доступ к премиям' },
+    { key: 'review_bonuses', label: 'Рассмотрение премий' },
     { key: 'access_archive', label: 'Доступ к Архиву' },
     { key: 'access_global_hub', label: 'Доступ к Гл. Управлению' }
 ];

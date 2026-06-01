@@ -151,7 +151,10 @@ function mapLogRow(row) {
 function mapSystemConfigRow(row) {
   return {
     webhookUrl: row && row.webhook_url ? row.webhook_url : '',
-    avatarUrlTemplate: row && row.avatar_url_template ? row.avatar_url_template : DEFAULT_AVATAR_URL_TEMPLATE
+    avatarUrlTemplate: row && row.avatar_url_template ? row.avatar_url_template : DEFAULT_AVATAR_URL_TEMPLATE,
+    bonusReasons: row && Array.isArray(row.bonus_reasons) ? row.bonus_reasons : undefined,
+    bonusRequests: row && Array.isArray(row.bonus_requests) ? row.bonus_requests : [],
+    bonusPermissionsInitialized: !!(row && row.bonus_permissions_initialized)
   };
 }
 
@@ -299,6 +302,18 @@ async function ensureDatabaseCompat() {
   await pool.query(`
     alter table if exists system_config
     add column if not exists avatar_url_template text not null default '${DEFAULT_AVATAR_URL_TEMPLATE}'
+  `);
+  await pool.query(`
+    alter table if exists system_config
+    add column if not exists bonus_reasons jsonb not null default '[]'::jsonb
+  `);
+  await pool.query(`
+    alter table if exists system_config
+    add column if not exists bonus_requests jsonb not null default '[]'::jsonb
+  `);
+  await pool.query(`
+    alter table if exists system_config
+    add column if not exists bonus_permissions_initialized boolean not null default false
   `);
 }
 
@@ -452,10 +467,13 @@ async function saveSnapshotToDatabase(snapshot, actorUserId) {
 
     await client.query('delete from system_config');
     await client.query(
-      'insert into system_config (id, webhook_url, avatar_url_template) values (true, $1, $2)',
+      'insert into system_config (id, webhook_url, avatar_url_template, bonus_reasons, bonus_requests, bonus_permissions_initialized) values (true, $1, $2, $3::jsonb, $4::jsonb, $5)',
       [
         snapshot.systemConfig && snapshot.systemConfig.webhookUrl ? snapshot.systemConfig.webhookUrl : '',
-        snapshot.systemConfig && snapshot.systemConfig.avatarUrlTemplate ? snapshot.systemConfig.avatarUrlTemplate : DEFAULT_AVATAR_URL_TEMPLATE
+        snapshot.systemConfig && snapshot.systemConfig.avatarUrlTemplate ? snapshot.systemConfig.avatarUrlTemplate : DEFAULT_AVATAR_URL_TEMPLATE,
+        JSON.stringify(snapshot.systemConfig && Array.isArray(snapshot.systemConfig.bonusReasons) ? snapshot.systemConfig.bonusReasons : []),
+        JSON.stringify(snapshot.systemConfig && Array.isArray(snapshot.systemConfig.bonusRequests) ? snapshot.systemConfig.bonusRequests : []),
+        !!(snapshot.systemConfig && snapshot.systemConfig.bonusPermissionsInitialized)
       ]
     );
 

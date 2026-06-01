@@ -285,7 +285,8 @@ function renderGlobalSettings(container) {
                     '<button class="btn btn-primary" onclick="saveSystemConfig()">Сохранить настройки</button>',
                 '</div>',
             '</div>',
-        '</div>'
+        '</div>',
+        renderBonusReasonsSettings()
     ].join('');
 }
 
@@ -317,7 +318,8 @@ function renderGlobalSettings(container) {
                     '<span style="font-size:0.9rem;">Полный snapshot в localStorage отключен. Основные данные берутся из локальной PostgreSQL-базы.</span>',
                 '</div>',
             '</div>',
-        '</div>'
+        '</div>',
+        renderBonusReasonsSettings()
     ].join('');
 }
 
@@ -364,7 +366,8 @@ function renderGlobalSettings(container) {
                     '<button class="btn btn-primary" onclick="saveSystemConfig()">Сохранить настройки</button>',
                 '</div>',
             '</div>',
-        '</div>'
+        '</div>',
+        renderBonusReasonsSettings()
     ].join('');
 }
 
@@ -425,6 +428,7 @@ function renderGlobalSettings(container) {
                     '<button class="btn btn-primary" onclick="saveSystemConfig()">Сохранить настройки</button>',
                 '</div>',
             '</div>',
-        '</div>'
+        '</div>',
+        renderBonusReasonsSettings()
     ].join('');
 }

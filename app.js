@@ -13,6 +13,20 @@ const DISCORD_OAUTH_LINK_USER_KEY = 'discord_oauth_link_user_id';
 const POST_RELOAD_TOAST_KEY = 'post_reload_toast';
 const DEFAULT_AVATAR_URL_TEMPLATE = 'https://skins.mcskill.net/?name=insert&mode=5&fx=size&fy=size';
 const THEME_STORAGE_KEY = 'modshop_theme';
+const DEFAULT_BONUS_REASONS = [
+    { id: 'forum_topic', label: 'разбор темы на форуме', fieldType: 'forum' },
+    { id: 'ticket_solution', label: 'решение тикета', fieldType: 'ticket' }
+];
+const DEFAULT_BONUS_ROLE_PERMS = {
+    helper: ['access_bonuses'],
+    moderator: ['access_bonuses'],
+    'ST-moderator': ['access_bonuses'],
+    gd: ['access_bonuses', 'review_bonuses'],
+    GM: ['access_bonuses', 'review_bonuses'],
+    kurator: ['access_bonuses', 'review_bonuses'],
+    tech_admin: ['access_bonuses', 'review_bonuses'],
+    server_admin: ['access_bonuses', 'review_bonuses']
+};
 
 function getStoredTheme() {
     try {
@@ -167,14 +181,75 @@ function normalizeAvatarTemplate(template) {
 
 function normalizeSystemConfig(config) {
     const source = config && typeof config === 'object' ? config : {};
+    const bonusReasons = Array.isArray(source.bonusReasons) && source.bonusReasons.length
+        ? source.bonusReasons
+        : DEFAULT_BONUS_REASONS;
+    const bonusRequests = Array.isArray(source.bonusRequests) ? source.bonusRequests : [];
     return {
         webhookUrl: source.webhookUrl || '',
-        avatarUrlTemplate: normalizeAvatarTemplate(source.avatarUrlTemplate)
+        avatarUrlTemplate: normalizeAvatarTemplate(source.avatarUrlTemplate),
+        bonusReasons: bonusReasons.map(reason => ({
+            id: reason.id || ('bonus_reason_' + Math.random().toString(36).slice(2, 9)),
+            label: String(reason.label || '').trim() || 'Новая причина',
+            fieldType: ['forum', 'ticket', 'none'].includes(reason.fieldType) ? reason.fieldType : 'none'
+        })),
+        bonusRequests: bonusRequests.map(request => ({
+            id: request.id || ('bonus_request_' + Math.random().toString(36).slice(2, 9)),
+            companyId: request.companyId || 'comp_initial',
+            userId: request.userId || '',
+            reasonId: request.reasonId || '',
+            reasonLabel: request.reasonLabel || '',
+            fieldType: request.fieldType || 'none',
+            forumUrl: request.forumUrl || '',
+            ticketNumber: request.ticketNumber || '',
+            comment: request.comment || '',
+            amount: Math.max(0, Math.trunc(Number(request.amount) || 0)),
+            status: ['pending', 'approved', 'rejected'].includes(request.status) ? request.status : 'pending',
+            createdAt: request.createdAt || new Date().toISOString(),
+            reviewedAt: request.reviewedAt || null,
+            reviewedBy: request.reviewedBy || null,
+            reviewComment: request.reviewComment || ''
+        })),
+        bonusPermissionsInitialized: !!source.bonusPermissionsInitialized
     };
+}
+
+function initializeDefaultBonusPermissions(data) {
+    if (!data || !Array.isArray(data.roles)) return false;
+    data.systemConfig = normalizeSystemConfig(data.systemConfig);
+    if (data.systemConfig.bonusPermissionsInitialized) return false;
+    let changed = false;
+    data.roles.forEach(role => {
+        if (!role || role.id === 'admin') return;
+        if (!Array.isArray(role.perms)) {
+            role.perms = [];
+            changed = true;
+        }
+        (DEFAULT_BONUS_ROLE_PERMS[role.id] || []).forEach(perm => {
+            if (!role.perms.includes(perm)) {
+                role.perms.push(perm);
+                changed = true;
+            }
+        });
+    });
+    data.systemConfig.bonusPermissionsInitialized = true;
+    return true;
 }
 
 function getAvatarUrlTemplate() {
     return normalizeAvatarTemplate(db && db.data && db.data.systemConfig ? db.data.systemConfig.avatarUrlTemplate : '');
+}
+
+function getBonusReasons() {
+    if (!db || !db.data) return DEFAULT_BONUS_REASONS;
+    db.data.systemConfig = normalizeSystemConfig(db.data.systemConfig);
+    return db.data.systemConfig.bonusReasons;
+}
+
+function getBonusRequests() {
+    if (!db || !db.data) return [];
+    db.data.systemConfig = normalizeSystemConfig(db.data.systemConfig);
+    return db.data.systemConfig.bonusRequests;
 }
 
 function formatCoinAmount(value) {
@@ -425,7 +500,10 @@ class SupabaseTableGateway {
     mapSystemConfigRow(row) {
         return normalizeSystemConfig({
             webhookUrl: row && row.webhook_url ? row.webhook_url : '',
-            avatarUrlTemplate: row && row.avatar_url_template ? row.avatar_url_template : ''
+            avatarUrlTemplate: row && row.avatar_url_template ? row.avatar_url_template : '',
+            bonusReasons: row && Array.isArray(row.bonus_reasons) ? row.bonus_reasons : undefined,
+            bonusRequests: row && Array.isArray(row.bonus_requests) ? row.bonus_requests : [],
+            bonusPermissionsInitialized: !!(row && row.bonus_permissions_initialized)
         });
     }
 }
@@ -1101,14 +1179,14 @@ class Database {
                     { id: PENDING_ROLE_ID, label: 'Ожидание', tier: 0, color: '#f59e0b', perms: [] },
                     { id: VACATION_ROLE_ID, label: 'В отпуске', tier: 0.5, color: '#14b8a6', perms: [] },
                     { id: 'admin', label: 'Гл. Администратор', tier: 8, color: '#ec4899', perms: ['all'] },
-                    { id: 'server_admin', label: 'Админ Сервера', tier: 7, color: '#f59e0b', perms: ['access_mod_panel', 'generate_codes', 'manage_store', 'view_logs', 'edit_balance', 'edit_roles', 'access_archive'] },
-                    { id: 'tech_admin', label: 'Тех-Админ', tier: 6, color: '#06b6d4', perms: ['access_mod_panel', 'manage_store', 'view_logs', 'edit_balance', 'access_archive'] },
-                    { id: 'kurator', label: 'Куратор', tier: 5, color: '#eab308', perms: ['access_mod_panel', 'view_logs', 'edit_balance', 'access_archive'] },
-                    { id: 'GM', label: 'Гл. Модератор', tier: 4, color: '#a855f7', perms: ['access_mod_panel', 'view_logs', 'access_archive'] },
-                    { id: 'gd', label: 'ГД', tier: 4, color: '#10b981', perms: ['access_mod_panel', 'view_logs', 'access_archive'] },
-                    { id: 'ST-moderator', label: 'Ст-Модератор', tier: 3, color: '#6366f1', perms: ['access_mod_panel', 'view_logs', 'access_archive'] },
-                    { id: 'moderator', label: 'Модератор', tier: 2, color: '#38bdf8', perms: ['access_mod_panel'] },
-                    { id: 'helper', label: 'Хелпер', tier: 1, color: '#10b881', perms: [] }
+                    { id: 'server_admin', label: 'Админ Сервера', tier: 7, color: '#f59e0b', perms: ['access_mod_panel', 'generate_codes', 'manage_store', 'view_logs', 'edit_balance', 'edit_roles', 'access_archive', 'access_bonuses', 'review_bonuses'] },
+                    { id: 'tech_admin', label: 'Тех-Админ', tier: 6, color: '#06b6d4', perms: ['access_mod_panel', 'manage_store', 'view_logs', 'edit_balance', 'access_archive', 'access_bonuses', 'review_bonuses'] },
+                    { id: 'kurator', label: 'Куратор', tier: 5, color: '#eab308', perms: ['access_mod_panel', 'view_logs', 'edit_balance', 'access_archive', 'access_bonuses', 'review_bonuses'] },
+                    { id: 'GM', label: 'Гл. Модератор', tier: 4, color: '#a855f7', perms: ['access_mod_panel', 'view_logs', 'access_archive', 'access_bonuses', 'review_bonuses'] },
+                    { id: 'gd', label: 'ГД', tier: 4, color: '#10b981', perms: ['access_mod_panel', 'view_logs', 'access_archive', 'access_bonuses', 'review_bonuses'] },
+                    { id: 'ST-moderator', label: 'Ст-Модератор', tier: 3, color: '#6366f1', perms: ['access_mod_panel', 'view_logs', 'access_archive', 'access_bonuses'] },
+                    { id: 'moderator', label: 'Модератор', tier: 2, color: '#38bdf8', perms: ['access_mod_panel', 'access_bonuses'] },
+                    { id: 'helper', label: 'Хелпер', tier: 1, color: '#10b881', perms: ['access_bonuses'] }
                 ]
             };
             this.save();
@@ -1119,14 +1197,14 @@ class Database {
                 { id: PENDING_ROLE_ID, label: 'Ожидание', tier: 0, color: '#f59e0b', perms: [] },
                 { id: VACATION_ROLE_ID, label: 'В отпуске', tier: 0.5, color: '#14b8a6', perms: [] },
                 { id: 'admin', label: 'Гл. Администратор', tier: 8, color: '#ec4899', perms: ['all'] },
-                { id: 'server_admin', label: 'Админ Сервера', tier: 7, color: '#f59e0b', perms: ['access_mod_panel', 'generate_codes', 'manage_store', 'view_logs', 'edit_balance', 'edit_roles', 'access_archive'] },
-                { id: 'tech_admin', label: 'Тех-Админ', tier: 6, color: '#06b6d4', perms: ['access_mod_panel', 'manage_store', 'view_logs', 'edit_balance', 'access_archive'] },
-                { id: 'kurator', label: 'Куратор', tier: 5, color: '#eab308', perms: ['access_mod_panel', 'view_logs', 'edit_balance', 'access_archive'] },
-                { id: 'GM', label: 'Гл. Модератор', tier: 4, color: '#a855f7', perms: ['access_mod_panel', 'view_logs', 'access_archive'] },
-                { id: 'gd', label: 'ГД', tier: 4, color: '#10b981', perms: ['access_mod_panel', 'view_logs', 'access_archive'] },
-                { id: 'ST-moderator', label: 'Ст-Модератор', tier: 3, color: '#6366f1', perms: ['access_mod_panel', 'view_logs', 'access_archive'] },
-                { id: 'moderator', label: 'Модератор', tier: 2, color: '#38bdf8', perms: ['access_mod_panel'] },
-                { id: 'helper', label: 'Хелпер', tier: 1, color: '#10b881', perms: [] }
+                { id: 'server_admin', label: 'Админ Сервера', tier: 7, color: '#f59e0b', perms: ['access_mod_panel', 'generate_codes', 'manage_store', 'view_logs', 'edit_balance', 'edit_roles', 'access_archive', 'access_bonuses', 'review_bonuses'] },
+                { id: 'tech_admin', label: 'Тех-Админ', tier: 6, color: '#06b6d4', perms: ['access_mod_panel', 'manage_store', 'view_logs', 'edit_balance', 'access_archive', 'access_bonuses', 'review_bonuses'] },
+                { id: 'kurator', label: 'Куратор', tier: 5, color: '#eab308', perms: ['access_mod_panel', 'view_logs', 'edit_balance', 'access_archive', 'access_bonuses', 'review_bonuses'] },
+                { id: 'GM', label: 'Гл. Модератор', tier: 4, color: '#a855f7', perms: ['access_mod_panel', 'view_logs', 'access_archive', 'access_bonuses', 'review_bonuses'] },
+                { id: 'gd', label: 'ГД', tier: 4, color: '#10b981', perms: ['access_mod_panel', 'view_logs', 'access_archive', 'access_bonuses', 'review_bonuses'] },
+                { id: 'ST-moderator', label: 'Ст-Модератор', tier: 3, color: '#6366f1', perms: ['access_mod_panel', 'view_logs', 'access_archive', 'access_bonuses'] },
+                { id: 'moderator', label: 'Модератор', tier: 2, color: '#38bdf8', perms: ['access_mod_panel', 'access_bonuses'] },
+                { id: 'helper', label: 'Хелпер', tier: 1, color: '#10b881', perms: ['access_bonuses'] }
             ];
             this.save();
         }
@@ -1155,6 +1233,8 @@ class Database {
                 vacationRole.perms = [];
             }
         }
+
+        initializeDefaultBonusPermissions(this.data);
 
         this.data.users.forEach(u => {
             if (!u.cart) u.cart = [];
@@ -1406,6 +1486,7 @@ class Database {
         if (snapshot.logs) this.data.logs = snapshot.logs;
         if (snapshot.systemConfig) this.data.systemConfig = normalizeSystemConfig(snapshot.systemConfig);
         ensureDefaultAdminInData(this.data);
+        initializeDefaultBonusPermissions(this.data);
         this.touchData(false);
     }
 }
@@ -1919,6 +2000,7 @@ function renderDashboardTab(target, content, isWebsiteAdmin) {
     if (target === 'profile') renderProfile(content);
     if (target === 'store') renderStore(content);
     if (target === 'cart') renderCart(content);
+    if (target === 'bonuses') renderBonuses(content);
     if (target === 'users') renderUsers(content);
     if (target === 'staffprofile') {
         const selectedUser = getSelectedStaffProfileUser();
@@ -1938,6 +2020,7 @@ function renderDashboardTab(target, content, isWebsiteAdmin) {
 function canOpenDashboardTarget(target, isWebsiteAdmin) {
     target = normalizeDashboardTarget(target);
     if (target === 'profile' || target === 'store' || target === 'cart' || target === 'users') return true;
+    if (target === 'bonuses') return hasPermission('access_bonuses') || hasPermission('review_bonuses');
     if (target === 'staffprofile') return !!getSelectedStaffProfileUser();
     if (target === 'logs') return hasPermission('view_logs');
     if (target === 'archive') return hasPermission('access_archive');
@@ -1998,6 +2081,7 @@ function renderDashboard(root) {
                     '<a class="nav-link active" data-target="profile">Профиль</a>',
                     '<a class="nav-link" data-target="store">Магазин</a>',
                     '<a class="nav-link" data-target="cart">Корзина (<span id="cartCount">0</span>)</a>',
+                    (hasPermission('access_bonuses') || hasPermission('review_bonuses')) ? '<a class="nav-link" data-target="bonuses">Премии</a>' : '',
                     '<a class="nav-link" data-target="users">Сотрудники сервера</a>',
                     hasPermission('view_logs') ? '<a class="nav-link" data-target="logs">Транзакции</a>' : '',
                     hasPermission('access_archive') ? '<a class="nav-link" data-target="archive" style="color:#94a3b8">Архив</a>' : '',
