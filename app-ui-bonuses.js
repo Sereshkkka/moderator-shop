@@ -173,6 +173,13 @@ function setBonusRequestsFilter(filter) {
     renderBonuses(getDashboardContent());
 }
 
+function getBonusPayoutLogReason(request) {
+    const baseReason = 'Премия: ' + request.reasonLabel;
+    const amountWasEdited = request.originalAmount !== null && request.originalAmount !== undefined && Number(request.originalAmount) !== Number(request.amount);
+    if (!amountWasEdited) return baseReason;
+    return baseReason + ' (запрошено ' + formatCoinAmount(request.originalAmount) + ', выплачено ' + formatCoinAmount(request.amount) + ')';
+}
+
 function applyBonusPayout(request) {
     const targetUser = db.data.users.find(user => user.id === request.userId);
     if (!targetUser) {
@@ -196,7 +203,7 @@ function applyBonusPayout(request) {
         oldBalance,
         newBalance: nextBalance,
         type: 'Bonus Approval',
-        reason: 'Премия: ' + request.reasonLabel,
+        reason: getBonusPayoutLogReason(request),
         date: new Date().toISOString()
     });
     return true;
