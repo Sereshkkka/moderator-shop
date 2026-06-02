@@ -50,7 +50,7 @@ function renderUsers(container) {
                 '</div>',
                 '<div class="staff-tile-meta">',
                     '<span>' + formatCoinAmount(u.coins) + ' монет</span>',
-                    '<span>' + new Date(u.date).toLocaleDateString() + '</span>',
+                    '<span>' + formatAppDate(u.date, { dateOnly: true }) + '</span>',
                 '</div>',
             '</button>'
         ].join('');
@@ -282,7 +282,7 @@ function renderStaffProfile(container, targetUser) {
             else if (modifier) executor = modifier.username;
             return [
                 '<tr>',
-                    '<td>' + new Date(l.date).toLocaleDateString() + '</td>',
+                    '<td>' + formatAppDate(l.date) + '</td>',
                     '<td>' + escapeHTML(executor) + '</td>',
                     '<td style="color:' + color + '; font-weight:bold">' + diffStr + '</td>',
                     '<td>' + escapeHTML(l.reason || '') + '</td>',
@@ -377,7 +377,7 @@ function renderStaffProfile(container, targetUser) {
                     '</table>',
                 '</div>',
                 '<div class="staff-profile-meta">',
-                    '<span><strong>Дата входа:</strong> ' + new Date(targetUser.date).toLocaleDateString() + '</span>',
+                    '<span><strong>Дата входа:</strong> ' + formatAppDate(targetUser.date, { dateOnly: true }) + '</span>',
                     (isUserOnVacation(targetUser, currentCompanyId) ? '<span><strong>Отпуск:</strong> В отпуске</span>' : ''),
                     (isUserOnVacation(targetUser, currentCompanyId) ? '<span><strong>Вернется в роль:</strong> ' + escapeHTML(getRoleLabel(effectiveRoleId)) + '</span>' : ''),
                 '</div>',

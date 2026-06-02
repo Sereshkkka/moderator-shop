@@ -334,7 +334,7 @@ function renderLogs(container) {
 
         return [
             '<tr>',
-                '<td>' + new Date(l.date).toLocaleString() + '</td>',
+                '<td>' + formatAppDate(l.date) + '</td>',
                 '<td>' + typeBadge + '</td>',
                 '<td>' + eTarget + '</td>',
                 '<td>' + eMod + '</td>',

@@ -278,6 +278,16 @@ function formatCoinAmount(value) {
     return Math.trunc(numeric).toLocaleString('ru-RU');
 }
 
+function formatAppDate(value, options = {}) {
+    if (!value) return '—';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    const pad = valuePart => String(valuePart).padStart(2, '0');
+    const datePart = pad(date.getDate()) + '/' + pad(date.getMonth() + 1) + '/' + date.getFullYear();
+    if (options.dateOnly) return datePart;
+    return datePart + ', ' + pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());
+}
+
 function appendAvatarSize(url, size) {
     try {
         const parsedUrl = new URL(url, window.location.origin);

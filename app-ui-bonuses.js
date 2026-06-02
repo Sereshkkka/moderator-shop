@@ -99,7 +99,7 @@ function renderBonuses(container) {
 
         return [
             '<tr>',
-                '<td><strong>' + escapeHTML(user ? user.username : 'Неизвестно') + '</strong><div class="text-muted" style="font-size:0.78rem;">' + new Date(request.createdAt).toLocaleString() + '</div></td>',
+                '<td><strong>' + escapeHTML(user ? user.username : 'Неизвестно') + '</strong><div class="text-muted" style="font-size:0.78rem;">' + formatAppDate(request.createdAt) + '</div></td>',
                 '<td style="max-width:220px; white-space:normal; overflow-wrap:anywhere;">' + escapeHTML(request.reasonLabel) + '</td>',
                 '<td style="max-width:360px; white-space:normal; overflow-wrap:anywhere;">' + escapeHTML(request.comment || '—') + '</td>',
                 '<td>' + amountContent + '</td>',
@@ -174,10 +174,9 @@ function setBonusRequestsFilter(filter) {
 }
 
 function getBonusPayoutLogReason(request) {
-    const baseReason = 'Премия: ' + request.reasonLabel;
     const amountWasEdited = request.originalAmount !== null && request.originalAmount !== undefined && Number(request.originalAmount) !== Number(request.amount);
-    if (!amountWasEdited) return baseReason;
-    return baseReason + ' (запрошено ' + formatCoinAmount(request.originalAmount) + ', выплачено ' + formatCoinAmount(request.amount) + ')';
+    if (!amountWasEdited) return 'Премия: ' + formatCoinAmount(request.amount);
+    return 'Премия: запрошено ' + formatCoinAmount(request.originalAmount) + ', выплачено ' + formatCoinAmount(request.amount);
 }
 
 function applyBonusPayout(request) {
