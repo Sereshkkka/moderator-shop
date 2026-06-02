@@ -1119,6 +1119,30 @@ textarea.form-control {
   color: var(--primary);
 }
 
+body.light-theme .bonus-filter-chip {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(100, 116, 139, 0.34);
+  color: #334155;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+}
+
+body.light-theme .bonus-filter-chip span {
+  color: #0f172a;
+  opacity: 0.95;
+}
+
+body.light-theme .bonus-filter-chip:hover {
+  border-color: rgba(79, 70, 229, 0.48);
+  background: rgba(238, 242, 255, 0.96);
+  color: #1e293b;
+}
+
+body.light-theme .bonus-filter-chip.active {
+  border-color: rgba(79, 70, 229, 0.75);
+  background: rgba(99, 102, 241, 0.12);
+  color: #4338ca;
+}
+
 .bonus-comment-icon-btn {
   display: inline-flex;
   align-items: center;
