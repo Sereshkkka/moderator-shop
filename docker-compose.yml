@@ -1,0 +1,15 @@
+services:
+  modshop:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: modshop
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 4174
+    ports:
+      - "4174:4174"
