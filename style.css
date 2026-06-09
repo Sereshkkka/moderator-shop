@@ -1079,6 +1079,30 @@ textarea.form-control {
   letter-spacing: 0.08em;
 }
 
+.invite-code-copy {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.1rem 0.25rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--warning);
+  font: inherit;
+  font-family: monospace;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.invite-code-copy:hover,
+.invite-code-copy:focus-visible {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+  outline: none;
+}
+
 .bonus-filter-bar {
   display: flex;
   flex-wrap: wrap;

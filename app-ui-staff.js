@@ -1,3 +1,40 @@
+function copyInviteCodeToClipboard(code) {
+    const value = String(code || '').trim();
+    if (!value || value === 'Н/Д') return;
+
+    const fallbackCopy = () => {
+        const textarea = document.createElement('textarea');
+        textarea.value = value;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+    };
+
+    const copyPromise = navigator.clipboard && navigator.clipboard.writeText
+        ? navigator.clipboard.writeText(value)
+        : Promise.resolve().then(fallbackCopy);
+
+    copyPromise
+        .then(() => showToast('Код скопирован'))
+        .catch(() => {
+            fallbackCopy();
+            showToast('Код скопирован');
+        });
+}
+
+function bindInviteCodeCopyControls(container) {
+    container.querySelectorAll('.invite-code-copy').forEach(codeNode => {
+        codeNode.addEventListener('click', () => copyInviteCodeToClipboard(codeNode.dataset.code));
+        codeNode.addEventListener('mouseenter', event => showCursorTooltip(event, 'скопировать'));
+        codeNode.addEventListener('mousemove', moveCursorTooltip);
+        codeNode.addEventListener('mouseleave', hideCursorTooltip);
+    });
+}
+
 function renderUsers(container) {
     const remoteReadMode = isSupabaseSessionActive();
     const canEditBalance = hasPermission('edit_balance');
@@ -119,13 +156,14 @@ function renderUsers(container) {
                 const targetU = escapeHTML(c.targetUsername || 'Неизвестно');
                 return [
                     '<tr>',
-                        '<td style="font-family:monospace;font-weight:bold;color:var(--warning)">' + escapeHTML(c.code) + '</td>',
+                        '<td><button type="button" class="invite-code-copy" data-code="' + escapeHTML(c.code) + '" aria-label="Скопировать код">' + escapeHTML(c.code) + '</button></td>',
                         '<td><strong>' + targetU + '</strong></td>',
                         '<td>' + statusBadge + '</td>',
                         '<td>' + actionBtn + '</td>',
                     '</tr>'
                 ].join('');
             }).join('');
+            bindInviteCodeCopyControls(tb);
         };
 
         document.getElementById('btnGenCode').onclick = async () => {
@@ -261,7 +299,7 @@ function renderStaffProfile(container, targetUser) {
             || db.data.codes.find(c => c.companyId === currentCompanyId && c.targetUsername === targetUser.username && !c.isUsed)
         : null;
     const pendingInviteCodeRow = targetUser.isPendingActivation
-        ? '<div class="profile-stat-row"><span>Код приглашения</span><div class="profile-stat-value-wrap"><strong style="font-family:monospace; letter-spacing:0.04em;">' + escapeHTML(pendingInviteCode ? pendingInviteCode.code : 'Н/Д') + '</strong></div></div>'
+        ? '<div class="profile-stat-row"><span>Код приглашения</span><div class="profile-stat-value-wrap"><button type="button" class="invite-code-copy" data-code="' + escapeHTML(pendingInviteCode ? pendingInviteCode.code : '') + '" aria-label="Скопировать код">' + escapeHTML(pendingInviteCode ? pendingInviteCode.code : 'Н/Д') + '</button></div></div>'
         : '';
 
     const userLogs = [...db.data.logs]
@@ -297,6 +335,7 @@ function renderStaffProfile(container, targetUser) {
             '<path d="M14 6.4 18.6 11"></path>',
         '</svg>'
     ].join('');
+
     const roleEditButton = canEditRole
         ? '<button type="button" class="icon-edit-trigger" onclick="openRoleEditModal(\'' + targetUser.id + '\')" title="Изменить должность" aria-label="Изменить должность">' + editIconSvg + '</button>'
         : '';
@@ -384,4 +423,6 @@ function renderStaffProfile(container, targetUser) {
             '</div>',
         '</div>'
     ].join('');
+
+    bindInviteCodeCopyControls(container);
 }
