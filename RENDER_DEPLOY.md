@@ -5,9 +5,7 @@ Create a Render **Web Service** from this repository.
 Use these settings:
 
 ```text
-Runtime: Node
-Build Command: npm install
-Start Command: npm start
+Runtime: Docker
 Plan: Free
 ```
 
