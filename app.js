@@ -1343,9 +1343,11 @@ class Database {
 
     async initRemote() {
         await this.migrate();
+        let serverDatabaseReady = !USE_SERVER_DATABASE_SYNC;
         if (USE_SERVER_DATABASE_SYNC) {
             try {
                 const snapshot = await this.loadRemote();
+                serverDatabaseReady = true;
                 if (snapshot && !USE_LOCAL_STORAGE_CACHE && getSnapshotWeight(snapshot) > 0) {
                     this.applyTableSnapshot(snapshot);
                     ensureDefaultAdminInData(this.data);
@@ -1357,7 +1359,7 @@ class Database {
                     await this.saveRemote();
                 }
             } catch (e) {
-                    console.error('Server database sync init error', e);
+                console.error('Server database sync init error', e);
             }
         }
         if (USE_TABLE_MODE && tableGateway.isConfigured()) {
@@ -1370,7 +1372,7 @@ class Database {
                 console.error('Table mode init error', e);
             }
         }
-        this.remoteSyncReady = true;
+        this.remoteSyncReady = serverDatabaseReady;
         this.saveLocal();
         if (!USE_REMOTE_SYNC) {
             console.warn('Remote sync is disabled for security. The app is running in local-only mode.');
