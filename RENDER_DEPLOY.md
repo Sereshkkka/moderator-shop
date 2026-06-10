@@ -17,6 +17,7 @@ PUBLIC_APP_URL=https://YOUR_RENDER_SERVICE.onrender.com
 DATABASE_URL=postgresql://postgres.tiplvmplutoybajoksat:YOUR_DATABASE_PASSWORD@aws-1-us-west-2.pooler.supabase.com:6543/postgres
 DATABASE_SSL=true
 DATABASE_SSL_REJECT_UNAUTHORIZED=false
+DATABASE_CONNECTION_TIMEOUT_MS=10000
 DISCORD_OAUTH_CLIENT_ID=1492710758658871336
 SUPABASE_URL=https://tiplvmplutoybajoksat.supabase.co
 SUPABASE_ANON_KEY=

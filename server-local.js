@@ -7,11 +7,12 @@ const { Pool } = require('pg');
 
 dotenv.config({ path: path.join(__dirname, '.env') });
 
-const HOST = process.env.HOST || '127.0.0.1';
+const HOST = process.env.HOST || '0.0.0.0';
 const PORT = Number(process.env.PORT || 4174);
 const DATABASE_URL = process.env.DATABASE_URL || '';
 const DATABASE_SSL = String(process.env.DATABASE_SSL || '').toLowerCase();
 const DATABASE_SSL_REJECT_UNAUTHORIZED = String(process.env.DATABASE_SSL_REJECT_UNAUTHORIZED || 'false').toLowerCase() === 'true';
+const DATABASE_CONNECTION_TIMEOUT_MS = Number(process.env.DATABASE_CONNECTION_TIMEOUT_MS || 10000);
 const PUBLIC_APP_URL = process.env.PUBLIC_APP_URL || `http://localhost:${PORT}`;
 const DISCORD_OAUTH_CLIENT_ID = process.env.DISCORD_OAUTH_CLIENT_ID || '1492710758658871336';
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
@@ -40,6 +41,7 @@ function shouldUseDatabaseSsl(connectionString) {
 const pool = DATABASE_URL
   ? new Pool({
       connectionString: DATABASE_URL,
+      connectionTimeoutMillis: DATABASE_CONNECTION_TIMEOUT_MS,
       ssl: shouldUseDatabaseSsl(DATABASE_URL)
         ? { rejectUnauthorized: DATABASE_SSL_REJECT_UNAUTHORIZED }
         : undefined
@@ -657,21 +659,24 @@ const server = http.createServer(async (req, res) => {
   sendFile(res, fullPath);
 });
 
-async function startServer() {
-  try {
-    await ensureDatabaseCompat();
-    server.listen(PORT, HOST, () => {
-      console.log(`Local ModShop server started on ${PUBLIC_APP_URL}`);
-      if (DATABASE_URL) {
-        console.log(`Database connection is configured${shouldUseDatabaseSsl(DATABASE_URL) ? ' with SSL' : ''}.`);
-      } else {
-        console.log('Database is not configured yet. Add DATABASE_URL to .env');
-      }
-    });
-  } catch (error) {
-    console.error('Failed to start local server:', error);
+function startServer() {
+  server.on('error', (error) => {
+    console.error('Failed to start HTTP server:', error);
     process.exit(1);
-  }
+  });
+
+  server.listen(PORT, HOST, () => {
+    console.log(`ModShop server started on ${HOST}:${PORT} (${PUBLIC_APP_URL})`);
+    if (!DATABASE_URL) {
+      console.log('Database is not configured yet. Add DATABASE_URL to the environment.');
+      return;
+    }
+
+    console.log(`Database connection is configured${shouldUseDatabaseSsl(DATABASE_URL) ? ' with SSL' : ''}.`);
+    ensureDatabaseCompat()
+      .then(() => console.log('Database compatibility check completed.'))
+      .catch((error) => console.error('Database compatibility check failed:', error));
+  });
 }
 
 startServer();
