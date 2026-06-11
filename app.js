@@ -1433,7 +1433,7 @@ class Database {
         if (!USE_SERVER_DATABASE_SYNC) {
             throw new Error('Remote sync is disabled');
         }
-        const response = await fetch('/api/snapshot');
+        const response = await fetch('/api/snapshot', { cache: 'no-store' });
         if (!response.ok) {
             throw new Error('Не удалось загрузить данные из Supabase.');
         }
@@ -1568,6 +1568,8 @@ let hasShownLocalPostgresSyncError = false;
 let expandedPurchaseLogIds = new Set();
 let isServerSwitcherOpen = false;
 let selectedStaffProfileUserId = null;
+let staffProfileRefreshTimer = null;
+let isStaffProfileRefreshRunning = false;
 const STAFF_PROFILE_STORAGE_KEY = 'staff_profile_user_id';
 
 async function initApp() {
@@ -2073,7 +2075,27 @@ function getActiveDashboardTab() {
         || 'profile';
 }
 
-async function syncDashboardTabData(target) {
+async function syncDashboardTabData(target, options = {}) {
+    const silent = !!options.silent;
+    if (USE_SERVER_DATABASE_SYNC && (target === 'users' || target === 'staffprofile' || target === 'logs' || target === 'globalctrl')) {
+        try {
+            if (db.remoteSaveTimer || db.pendingRemoteSave) {
+                await db.flushRemoteSave();
+            }
+            const snapshot = await db.loadRemote();
+            if (snapshot) {
+                db.applyTableSnapshot(snapshot);
+                refreshCurrentUserReference();
+                ensureValidCurrentCompany();
+            }
+        } catch (error) {
+            console.error('Could not refresh server snapshot', error);
+            if (!silent) {
+                showToast(error.message || 'Не удалось обновить данные с сервера.', 'error');
+            }
+        }
+        return;
+    }
     if ((target === 'users' || target === 'logs' || target === 'globalctrl') && isSupabaseSessionActive()) {
         await syncStaffReadSnapshot();
     }
@@ -2082,7 +2104,54 @@ async function syncDashboardTabData(target) {
     }
 }
 
+function stopStaffProfileAutoRefresh() {
+    if (staffProfileRefreshTimer) {
+        clearInterval(staffProfileRefreshTimer);
+        staffProfileRefreshTimer = null;
+    }
+    isStaffProfileRefreshRunning = false;
+}
+
+function getStaffProfileSyncFingerprint(user) {
+    if (!user) return '';
+    const inviteCode = user.inviteCodeId
+        ? db.data.codes.find(code => code.id === user.inviteCodeId)
+        : null;
+    return JSON.stringify({
+        isPendingActivation: !!user.isPendingActivation,
+        accountStatus: user.accountStatus || '',
+        inviteCodeId: user.inviteCodeId || '',
+        inviteCodeUsed: inviteCode ? !!inviteCode.isUsed : null,
+        coins: user.coins,
+        role: getUserRoleForCompany(user, currentCompanyId),
+        discordId: user.discordId || ''
+    });
+}
+
+function startStaffProfileAutoRefresh(targetUserId) {
+    stopStaffProfileAutoRefresh();
+    if (!USE_SERVER_DATABASE_SYNC || !targetUserId) return;
+    let lastFingerprint = getStaffProfileSyncFingerprint(db.data.users.find(user => user.id === targetUserId));
+    staffProfileRefreshTimer = setInterval(async () => {
+        if (isStaffProfileRefreshRunning || getActiveDashboardTab() !== 'staffprofile') return;
+        isStaffProfileRefreshRunning = true;
+        try {
+            await syncDashboardTabData('staffprofile', { silent: true });
+            const updatedUser = db.data.users.find(user => user.id === targetUserId);
+            const nextFingerprint = getStaffProfileSyncFingerprint(updatedUser);
+            if (updatedUser && nextFingerprint !== lastFingerprint) {
+                lastFingerprint = nextFingerprint;
+                const content = getDashboardContent();
+                if (content) renderStaffProfile(content, updatedUser);
+            }
+        } finally {
+            isStaffProfileRefreshRunning = false;
+        }
+    }, 8000);
+}
+
 function renderDashboardTab(target, content, isWebsiteAdmin) {
+    stopStaffProfileAutoRefresh();
     content.innerHTML = '';
     if (target === 'profile') renderProfile(content);
     if (target === 'store') renderStore(content);
@@ -2093,6 +2162,7 @@ function renderDashboardTab(target, content, isWebsiteAdmin) {
         const selectedUser = getSelectedStaffProfileUser();
         if (selectedUser && hasUserCompanyAccess(selectedUser, currentCompanyId)) {
             renderStaffProfile(content, selectedUser);
+            startStaffProfileAutoRefresh(selectedUser.id);
         } else {
             setSelectedStaffProfileUser(null);
             sessionStorage.setItem('active_tab', 'users');
@@ -2116,6 +2186,7 @@ function canOpenDashboardTarget(target, isWebsiteAdmin) {
 }
 
 function renderDashboard(root) {
+    stopStaffProfileAutoRefresh();
     refreshCurrentUserReference();
     const isHighMod = hasPermission('access_mod_panel');
     const isWebsiteAdmin = hasGlobalControlAccess();
