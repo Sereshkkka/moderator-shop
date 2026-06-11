@@ -43,7 +43,8 @@ function renderHighMod(container) {
             '</div>',
 
             '<div id="addItemForm" class="glass-panel mb-4" style="display:none; max-width:100%; padding: 1.5rem;">',
-                '<h5>Новая Позиция В Магазине</h5>',
+                '<h5 id="storeItemFormTitle">Новая Позиция В Магазине</h5>',
+                '<input type="hidden" id="i_edit_id" value="">',
                 '<div class="form-group mt-4">',
                     '<label>Название Предмета</label>',
                     '<input type="text" id="i_name" class="form-control">',
@@ -185,24 +186,55 @@ function renderHighMod(container) {
     renderCodes();
 
     const aForm = document.getElementById('addItemForm');
-    document.getElementById('btnAddItem').onclick = () => aForm.style.display = 'block';
-    document.getElementById('btnCancelItem').onclick = () => aForm.style.display = 'none';
+    const resetStoreItemForm = () => {
+        document.getElementById('i_edit_id').value = '';
+        document.getElementById('i_name').value = '';
+        document.getElementById('i_desc').value = '';
+        document.getElementById('i_price').value = '0';
+        document.getElementById('i_type').value = 'item';
+        document.getElementById('i_img').value = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80';
+        document.getElementById('storeItemFormTitle').textContent = 'Новая позиция в магазине';
+        document.getElementById('btnSaveItem').textContent = 'Опубликовать';
+    };
+    document.getElementById('btnAddItem').onclick = () => {
+        resetStoreItemForm();
+        aForm.style.display = 'block';
+    };
+    document.getElementById('btnCancelItem').onclick = () => {
+        resetStoreItemForm();
+        aForm.style.display = 'none';
+    };
 
     document.getElementById('btnSaveItem').onclick = () => {
         const validatedPrice = getValidatedNonNegativePrice('i_price');
         if (validatedPrice === null) return;
-        db.data.items.push({
-            id: db.generateId(),
-            companyId: currentCompanyId,
-            name: document.getElementById('i_name').value || 'Безымянный',
-            description: document.getElementById('i_desc').value || 'Без описания',
+        const editId = document.getElementById('i_edit_id').value;
+        const itemPayload = {
+            name: document.getElementById('i_name').value.trim() || 'Безымянный',
+            description: document.getElementById('i_desc').value.trim() || 'Без описания',
             price: validatedPrice,
             itemType: document.getElementById('i_type').value || 'item',
-            image: document.getElementById('i_img').value
-        });
+            image: document.getElementById('i_img').value.trim()
+        };
+        if (editId) {
+            const item = db.data.items.find(i => i.id === editId && i.companyId === currentCompanyId);
+            if (!item) {
+                showToast('Товар не найден в магазине текущего сервера.', 'error');
+                return;
+            }
+            Object.assign(item, itemPayload);
+        } else {
+            db.data.items.push({
+                id: db.generateId(),
+                companyId: currentCompanyId,
+                ...itemPayload
+            });
+        }
         db.save();
+        const successMessage = editId ? 'Товар обновлён.' : 'Предмет загружен на витрину этого сервера';
+        resetStoreItemForm();
         aForm.style.display = 'none';
-        showToast('Предмет загружен на витрину этого сервера');
+        showToast(successMessage);
         renderStoreTable();
     };
 
@@ -214,10 +246,28 @@ function renderHighMod(container) {
                 '<td>' + getItemTypeBadge(i.itemType || 'item') + '</td>',
                 '<td>' + i.price + '</td>',
                 '<td>',
+                    '<button class="btn btn-primary" style="padding:0.25rem 0.5rem; width:auto; margin-right:0.5rem" onclick="editStoreItem(\'' + i.id + '\')">Редактировать</button>',
                     '<button class="btn btn-danger" style="padding:0.25rem 0.5rem" onclick="deleteItem(\'' + i.id + '\')">Удалить</button>',
                 '</td>',
             '</tr>'
         ].join('')).join('');
+    };
+    window.editStoreItem = (id) => {
+        const item = db.data.items.find(i => i.id === id && i.companyId === currentCompanyId);
+        if (!item) {
+            showToast('Товар не найден в магазине текущего сервера.', 'error');
+            return;
+        }
+        document.getElementById('i_edit_id').value = item.id;
+        document.getElementById('i_name').value = item.name || '';
+        document.getElementById('i_desc').value = item.description || '';
+        document.getElementById('i_price').value = Number(item.price || 0);
+        document.getElementById('i_type').value = item.itemType || 'item';
+        document.getElementById('i_img').value = item.image || '';
+        document.getElementById('storeItemFormTitle').textContent = 'Редактирование товара';
+        document.getElementById('btnSaveItem').textContent = 'Сохранить изменения';
+        aForm.style.display = 'block';
+        aForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
     window.deleteItem = (id) => {
         db.data.items = db.data.items.filter(i => i.id !== id);
