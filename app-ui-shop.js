@@ -34,16 +34,16 @@ function renderProfile(container) {
     const discordAvatarUrl = escapeHTML(currentUser.discordAvatarUrl || '');
     const discordControlsHtml = discordLinked
         ? [
-            '<div style="display:flex; align-items:center; gap:0.85rem; margin-bottom:1rem;">',
+            '<div class="profile-discord-identity">',
                 (discordAvatarUrl
-                    ? '<img src="' + discordAvatarUrl + '" alt="Аватар Discord" style="width:42px; height:42px; border-radius:50%; object-fit:cover; border:1px solid rgba(255,255,255,0.12);">'
-                    : '<div style="width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:rgba(88,101,242,0.15); color:#c7d2fe; font-weight:700;">D</div>'),
+                    ? '<img src="' + discordAvatarUrl + '" alt="Аватар Discord" class="profile-discord-avatar">'
+                    : '<div class="profile-discord-avatar profile-discord-avatar-fallback">D</div>'),
                 '<div style="min-width:0; flex:1;">',
-                    '<div style="font-weight:700; line-height:1.2;">' + (discordDisplayName || 'Discord привязан') + '</div>',
-                    '<div class="text-muted" style="font-size:0.85rem; margin-top:0.2rem;">ID: ' + discordValue + '</div>',
+                    '<div class="profile-discord-name">' + (discordDisplayName || 'Discord привязан') + '</div>',
+                    '<div class="profile-discord-id">ID: ' + discordValue + '</div>',
                 '</div>',
             '</div>',
-            '<button class="btn btn-outline" style="width:100%;" onclick="clearDiscordLink()">Отвязать</button>'
+            '<button class="btn btn-outline profile-discord-unlink" onclick="clearDiscordLink()">Отвязать</button>'
         ].join('')
         : [
             '<div class="action-row">',
