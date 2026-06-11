@@ -1,7 +1,7 @@
 function renderArchive(container) {
     let archivedUsers = db.data.users.filter(u => hasUserCompanyAccess(u, currentCompanyId) && isUserArchivedOnCompany(u, currentCompanyId));
-    if (currentUser.username !== 'sereshkkka') {
-        archivedUsers = archivedUsers.filter(u => u.username !== 'sereshkkka');
+    if (!canViewInvisibleUsers()) {
+        archivedUsers = archivedUsers.filter(u => !isInvisibleUser(u, currentCompanyId));
     }
 
     const tiles = archivedUsers.map(u => {

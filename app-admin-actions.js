@@ -280,7 +280,8 @@ const PERMS_LIST = [
     { key: 'access_bonuses', label: 'Доступ к премиям' },
     { key: 'review_bonuses', label: 'Рассмотрение премий' },
     { key: 'access_archive', label: 'Доступ к Архиву' },
-    { key: 'access_global_hub', label: 'Доступ к Гл. Управлению' }
+    { key: 'access_global_hub', label: 'Доступ к Гл. Управлению' },
+    { key: 'invisible', label: 'Невидимка' }
 ];
 
 window.openRoleModal = (roleId) => {

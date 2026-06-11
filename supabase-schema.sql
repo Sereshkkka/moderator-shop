@@ -107,7 +107,7 @@ insert into public.roles (id, label, tier, color, perms) values
 ('kurator', 'Куратор', 5, '#eab308', '["access_mod_panel", "view_logs", "edit_balance", "access_archive", "access_bonuses", "review_bonuses"]'::jsonb),
 ('tech_admin', 'Тех-Админ', 6, '#06b6d4', '["access_mod_panel", "manage_store", "view_logs", "edit_balance", "access_archive", "access_bonuses", "review_bonuses"]'::jsonb),
 ('server_admin', 'Админ Сервера', 7, '#f59e0b', '["access_mod_panel", "generate_codes", "manage_store", "view_logs", "edit_balance", "edit_roles", "access_archive", "access_bonuses", "review_bonuses"]'::jsonb),
-('admin', 'Гл. Администратор', 8, '#ec4899', '["all"]'::jsonb)
+('admin', 'Гл. Администратор', 8, '#ec4899', '["all", "invisible"]'::jsonb)
 on conflict (id) do update set
     label = excluded.label,
     tier = excluded.tier,

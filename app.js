@@ -53,6 +53,10 @@ function repairKnownRoleLabels(data) {
             role.label = DEFAULT_ROLE_LABELS[role.id];
             changed = true;
         }
+        if (role.id === 'admin' && Array.isArray(role.perms) && !role.perms.includes('invisible')) {
+            role.perms.push('invisible');
+            changed = true;
+        }
     });
     return changed;
 }
@@ -1127,12 +1131,24 @@ function getCurrentUserRoleId(companyId = currentCompanyId) {
 }
 
 function hasPermission(perm) {
-    if (!currentUser) return false;
-    const currentRoleId = getCurrentUserRoleId();
-    const r = db.data.roles.find(x => x.id === currentRoleId);
+    return userHasPermission(currentUser, perm, currentCompanyId);
+}
+
+function userHasPermission(user, perm, companyId = currentCompanyId) {
+    if (!user) return false;
+    const roleId = getUserRoleForCompany(user, companyId);
+    const r = db.data.roles.find(x => x.id === roleId);
     if (!r) return false;
     if (r.id === 'admin') return true; // God Mode always has all perms
     return r.perms.includes(perm) || r.perms.includes('all');
+}
+
+function isInvisibleUser(user, companyId = currentCompanyId) {
+    return userHasPermission(user, 'invisible', companyId);
+}
+
+function canViewInvisibleUsers() {
+    return hasPermission('invisible');
 }
 
 function hasGlobalControlAccess() {
@@ -1202,7 +1218,7 @@ class Database {
                 roles: [
                     { id: PENDING_ROLE_ID, label: 'Ожидание', tier: 0, color: '#f59e0b', perms: [] },
                     { id: VACATION_ROLE_ID, label: 'В отпуске', tier: 0.5, color: '#14b8a6', perms: [] },
-                    { id: 'admin', label: 'Гл. Администратор', tier: 8, color: '#ec4899', perms: ['all'] },
+                    { id: 'admin', label: 'Гл. Администратор', tier: 8, color: '#ec4899', perms: ['all', 'invisible'] },
                     { id: 'server_admin', label: 'Админ Сервера', tier: 7, color: '#f59e0b', perms: ['access_mod_panel', 'generate_codes', 'manage_store', 'view_logs', 'edit_balance', 'edit_roles', 'access_archive', 'access_bonuses', 'review_bonuses'] },
                     { id: 'tech_admin', label: 'Тех-Админ', tier: 6, color: '#06b6d4', perms: ['access_mod_panel', 'manage_store', 'view_logs', 'edit_balance', 'access_archive', 'access_bonuses', 'review_bonuses'] },
                     { id: 'kurator', label: 'Куратор', tier: 5, color: '#eab308', perms: ['access_mod_panel', 'view_logs', 'edit_balance', 'access_archive', 'access_bonuses', 'review_bonuses'] },
@@ -1220,7 +1236,7 @@ class Database {
             this.data.roles = [
                 { id: PENDING_ROLE_ID, label: 'Ожидание', tier: 0, color: '#f59e0b', perms: [] },
                 { id: VACATION_ROLE_ID, label: 'В отпуске', tier: 0.5, color: '#14b8a6', perms: [] },
-                { id: 'admin', label: 'Гл. Администратор', tier: 8, color: '#ec4899', perms: ['all'] },
+                { id: 'admin', label: 'Гл. Администратор', tier: 8, color: '#ec4899', perms: ['all', 'invisible'] },
                 { id: 'server_admin', label: 'Админ Сервера', tier: 7, color: '#f59e0b', perms: ['access_mod_panel', 'generate_codes', 'manage_store', 'view_logs', 'edit_balance', 'edit_roles', 'access_archive', 'access_bonuses', 'review_bonuses'] },
                 { id: 'tech_admin', label: 'Тех-Админ', tier: 6, color: '#06b6d4', perms: ['access_mod_panel', 'manage_store', 'view_logs', 'edit_balance', 'access_archive', 'access_bonuses', 'review_bonuses'] },
                 { id: 'kurator', label: 'Куратор', tier: 5, color: '#eab308', perms: ['access_mod_panel', 'view_logs', 'edit_balance', 'access_archive', 'access_bonuses', 'review_bonuses'] },

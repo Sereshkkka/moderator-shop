@@ -330,9 +330,9 @@ function renderLogs(container) {
         const modObj = db.data.users.find(u => u.id === l.modifierId);
         let mod = modObj ? modObj.username : 'Неизвестно';
 
-        if (currentUser.username !== 'sereshkkka') {
-            if (target === 'sereshkkka') target = 'System';
-            if (mod === 'sereshkkka') mod = 'System';
+        if (!canViewInvisibleUsers()) {
+            if (targetObj && isInvisibleUser(targetObj, currentCompanyId)) target = 'System';
+            if (modObj && isInvisibleUser(modObj, currentCompanyId)) mod = 'System';
         }
 
         const eTarget = escapeHTML(target);
