@@ -2133,7 +2133,8 @@ function startStaffProfileAutoRefresh(targetUserId) {
     if (!USE_SERVER_DATABASE_SYNC || !targetUserId) return;
     let lastFingerprint = getStaffProfileSyncFingerprint(db.data.users.find(user => user.id === targetUserId));
     staffProfileRefreshTimer = setInterval(async () => {
-        if (isStaffProfileRefreshRunning || getActiveDashboardTab() !== 'staffprofile') return;
+        const activeTarget = sessionStorage.getItem('active_tab') || getActiveDashboardTab();
+        if (isStaffProfileRefreshRunning || activeTarget !== 'staffprofile') return;
         isStaffProfileRefreshRunning = true;
         try {
             await syncDashboardTabData('staffprofile', { silent: true });
@@ -2293,8 +2294,10 @@ function renderDashboard(root) {
 
     const links = document.querySelectorAll('.nav-link');
     const content = getDashboardContent();
+    let dashboardSyncSequence = 0;
 
     const switchTab = async (target) => {
+        const syncSequence = ++dashboardSyncSequence;
         target = normalizeDashboardTarget(target);
         if (!canOpenDashboardTarget(target, isWebsiteAdmin)) {
             target = 'profile';
@@ -2314,8 +2317,12 @@ function renderDashboard(root) {
             return;
         }
 
-        await syncDashboardTabData(target);
         renderDashboardTab(target, content, isWebsiteAdmin);
+        await syncDashboardTabData(target, { silent: true });
+        const currentTarget = sessionStorage.getItem('active_tab') || 'profile';
+        if (syncSequence === dashboardSyncSequence && currentTarget === target) {
+            renderDashboardTab(target, content, isWebsiteAdmin);
+        }
     };
 
     links.forEach(l => {
