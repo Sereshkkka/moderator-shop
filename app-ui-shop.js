@@ -115,6 +115,48 @@ function buildStoreImageTag(src, alt, extraAttrs) {
     return '<img src="' + escapeHTML(getSafeStoreImageUrl(src)) + '" alt="' + escapeHTML(alt || '') + '" onerror="this.onerror=null;this.src=\'' + getStoreImageFallback() + '\';" ' + (extraAttrs || '') + '>';
 }
 
+async function uploadStoreImageFile(file, urlInputId, previewId, statusId) {
+    if (!file) return;
+    const statusNode = document.getElementById(statusId);
+    if (file.size > 5 * 1024 * 1024) {
+        showToast('Изображение должно быть не больше 5 МБ.', 'error');
+        return;
+    }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        showToast('Поддерживаются только JPG, PNG и WebP.', 'error');
+        return;
+    }
+    if (statusNode) statusNode.textContent = 'Загрузка...';
+    try {
+        const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error('Не удалось прочитать изображение.'));
+            reader.readAsDataURL(file);
+        });
+        const response = await fetch('/api/store-images', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dataUrl })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload.ok || !payload.image) {
+            throw new Error(payload.error || 'Не удалось загрузить изображение.');
+        }
+        const urlInput = document.getElementById(urlInputId);
+        const preview = previewId ? document.getElementById(previewId) : null;
+        if (urlInput) urlInput.value = payload.image.url;
+        if (preview) preview.src = payload.image.url;
+        if (statusNode) statusNode.textContent = 'Загружено';
+        showToast('Изображение загружено на сервер.');
+    } catch (error) {
+        if (statusNode) statusNode.textContent = '';
+        showToast(error.message || 'Не удалось загрузить изображение.', 'error');
+    }
+}
+
+window.uploadStoreImageFile = uploadStoreImageFile;
+
 function renderStore(container) {
     const remoteReadMode = isSupabaseSessionActive();
     const canManageStore = hasPermission('manage_store');
@@ -255,6 +297,12 @@ function renderStore(container) {
                         '<div class="form-group">',
                             '<label>URL картинки</label>',
                             '<input type="text" id="store_item_img" class="form-control" value="' + escapeHTML(item ? item.image : 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80') + '">',
+                            '<div class="store-image-upload-row">',
+                                '<label class="btn btn-outline store-image-upload-button" for="store_item_img_file">Загрузить файл</label>',
+                                '<input type="file" id="store_item_img_file" accept="image/jpeg,image/png,image/webp" hidden>',
+                                '<span id="store_item_img_status" class="text-muted"></span>',
+                            '</div>',
+                            '<div class="text-muted store-image-upload-hint">JPG, PNG или WebP, не больше 5 МБ.</div>',
                             '<div class="store-image-preview-wrap">',
                                 '<span>Предпросмотр</span>',
                                 buildStoreImageTag(item ? item.image : 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80', item ? item.name : 'Новый товар', 'id="store_item_img_preview" class="store-image-preview"'),
@@ -269,6 +317,7 @@ function renderStore(container) {
             ].join('');
             document.getElementById('store_item_overlay').onclick = closeBalanceModal;
             const imageInput = document.getElementById('store_item_img');
+            const imageFileInput = document.getElementById('store_item_img_file');
             const imagePreview = document.getElementById('store_item_img_preview');
             if (imageInput && imagePreview) {
                 imageInput.oninput = () => {
@@ -278,6 +327,14 @@ function renderStore(container) {
                     };
                     imagePreview.src = getSafeStoreImageUrl(imageInput.value);
                 };
+            }
+            if (imageFileInput) {
+                imageFileInput.onchange = () => uploadStoreImageFile(
+                    imageFileInput.files && imageFileInput.files[0],
+                    'store_item_img',
+                    'store_item_img_preview',
+                    'store_item_img_status'
+                );
             }
         };
 

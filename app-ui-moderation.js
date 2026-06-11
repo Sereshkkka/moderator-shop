@@ -67,6 +67,12 @@ function renderHighMod(container) {
                 '<div class="form-group">',
                     '<label>URL Картинки (Опционально)</label>',
                     '<input type="text" id="i_img" class="form-control" value="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80">',
+                    '<div class="store-image-upload-row">',
+                        '<label class="btn btn-outline store-image-upload-button" for="i_img_file">Загрузить файл</label>',
+                        '<input type="file" id="i_img_file" accept="image/jpeg,image/png,image/webp" hidden>',
+                        '<span id="i_img_status" class="text-muted"></span>',
+                    '</div>',
+                    '<div class="text-muted store-image-upload-hint">JPG, PNG или WebP, не больше 5 МБ.</div>',
                 '</div>',
                 '<div class="action-row">',
                     '<button class="btn btn-primary" id="btnSaveItem">Опубликовать</button>',
@@ -186,6 +192,15 @@ function renderHighMod(container) {
     renderCodes();
 
     const aForm = document.getElementById('addItemForm');
+    const imageFileInput = document.getElementById('i_img_file');
+    if (imageFileInput) {
+        imageFileInput.onchange = () => uploadStoreImageFile(
+            imageFileInput.files && imageFileInput.files[0],
+            'i_img',
+            null,
+            'i_img_status'
+        );
+    }
     const resetStoreItemForm = () => {
         document.getElementById('i_edit_id').value = '';
         document.getElementById('i_name').value = '';
@@ -193,6 +208,10 @@ function renderHighMod(container) {
         document.getElementById('i_price').value = '0';
         document.getElementById('i_type').value = 'item';
         document.getElementById('i_img').value = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80';
+        const imageFileInput = document.getElementById('i_img_file');
+        const imageStatus = document.getElementById('i_img_status');
+        if (imageFileInput) imageFileInput.value = '';
+        if (imageStatus) imageStatus.textContent = '';
         document.getElementById('storeItemFormTitle').textContent = 'Новая позиция в магазине';
         document.getElementById('btnSaveItem').textContent = 'Опубликовать';
     };

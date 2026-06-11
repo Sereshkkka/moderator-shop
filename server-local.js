@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { URL } = require('url');
 const dotenv = require('dotenv');
 const { Pool } = require('pg');
@@ -18,7 +19,12 @@ const DISCORD_OAUTH_CLIENT_ID = process.env.DISCORD_OAUTH_CLIENT_ID || '14927107
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 const ROOT = __dirname;
+const UPLOADS_DIR = path.join(ROOT, 'uploads');
+const MAX_STORE_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_STORE_IMAGE_REQUEST_BYTES = 7 * 1024 * 1024;
 const DEFAULT_AVATAR_URL_TEMPLATE = 'https://skins.mcskill.net/?name=insert&mode=5&fx=size&fy=size';
+
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -28,6 +34,7 @@ const MIME_TYPES = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
   '.svg': 'image/svg+xml'
 };
 
@@ -172,11 +179,25 @@ function buildSnapshot(rows) {
   };
 }
 
-function parseRequestBody(req) {
+function parseRequestBody(req, maxBytes = 25 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    req.on('data', (chunk) => chunks.push(chunk));
+    let receivedBytes = 0;
+    let exceededLimit = false;
+    req.on('data', (chunk) => {
+      if (exceededLimit) return;
+      receivedBytes += chunk.length;
+      if (receivedBytes > maxBytes) {
+        exceededLimit = true;
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on('end', () => {
+      if (exceededLimit) {
+        reject(new Error('Размер запроса превышает допустимый лимит.'));
+        return;
+      }
       try {
         const raw = Buffer.concat(chunks).toString('utf8');
         resolve(raw ? JSON.parse(raw) : {});
@@ -186,6 +207,32 @@ function parseRequestBody(req) {
     });
     req.on('error', reject);
   });
+}
+
+function getStoreImageType(buffer) {
+  if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    return { extension: 'png', mimeType: 'image/png' };
+  }
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return { extension: 'jpg', mimeType: 'image/jpeg' };
+  }
+  if (buffer.length >= 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP') {
+    return { extension: 'webp', mimeType: 'image/webp' };
+  }
+  return null;
+}
+
+function saveStoreImage(dataUrl) {
+  const match = String(dataUrl || '').match(/^data:image\/(?:png|jpeg|jpg|webp);base64,([a-z0-9+/=\s]+)$/i);
+  if (!match) throw new Error('Поддерживаются только JPG, PNG и WebP.');
+  const buffer = Buffer.from(match[1].replace(/\s/g, ''), 'base64');
+  if (!buffer.length) throw new Error('Файл изображения пуст.');
+  if (buffer.length > MAX_STORE_IMAGE_BYTES) throw new Error('Изображение должно быть не больше 5 МБ.');
+  const imageType = getStoreImageType(buffer);
+  if (!imageType) throw new Error('Формат изображения не распознан.');
+  const fileName = `${Date.now()}-${crypto.randomBytes(12).toString('hex')}.${imageType.extension}`;
+  fs.writeFileSync(path.join(UPLOADS_DIR, fileName), buffer, { flag: 'wx' });
+  return { url: `/uploads/${fileName}`, mimeType: imageType.mimeType, size: buffer.length };
 }
 
 function getPublicAppConfig() {
@@ -675,6 +722,17 @@ async function handleApi(req, res, pathname) {
     return true;
   }
 
+  if (pathname === '/api/store-images' && req.method === 'POST') {
+    try {
+      const body = await parseRequestBody(req, MAX_STORE_IMAGE_REQUEST_BYTES);
+      const image = saveStoreImage(body.dataUrl);
+      sendJson(res, 201, { ok: true, image });
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: error.message });
+    }
+    return true;
+  }
+
   if (pathname === '/api/webhook-relay' && req.method === 'POST') {
     try {
       const body = await parseRequestBody(req);
@@ -734,6 +792,17 @@ const server = http.createServer(async (req, res) => {
   if (pathname === '/app-config.js') {
     res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8' });
     res.end(`window.__APP_CONFIG__ = ${JSON.stringify(getPublicAppConfig())};`);
+    return;
+  }
+
+  if (pathname.startsWith('/uploads/')) {
+    const fileName = path.basename(pathname);
+    const uploadPath = path.join(UPLOADS_DIR, fileName);
+    if (!fileName || !fs.existsSync(uploadPath) || fs.statSync(uploadPath).isDirectory()) {
+      sendJson(res, 404, { error: 'Not found' });
+      return;
+    }
+    sendFile(res, uploadPath);
     return;
   }
 

@@ -13,3 +13,5 @@ services:
       PORT: 4174
     ports:
       - "4174:4174"
+    volumes:
+      - ./data/uploads:/app/uploads
