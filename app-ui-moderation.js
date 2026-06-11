@@ -65,8 +65,8 @@ function renderHighMod(container) {
                     '</select>',
                 '</div>',
                 '<div class="form-group">',
-                    '<label>URL Картинки (Опционально)</label>',
-                    '<input type="text" id="i_img" class="form-control" value="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80">',
+                    '<label>Изображение товара</label>',
+                    '<input type="hidden" id="i_img" value="">',
                     '<div class="store-image-upload-row">',
                         '<label class="btn btn-outline store-image-upload-button" for="i_img_file">Загрузить файл</label>',
                         '<input type="file" id="i_img_file" accept="image/jpeg,image/png,image/webp" hidden>',
@@ -207,7 +207,7 @@ function renderHighMod(container) {
         document.getElementById('i_desc').value = '';
         document.getElementById('i_price').value = '0';
         document.getElementById('i_type').value = 'item';
-        document.getElementById('i_img').value = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80';
+        document.getElementById('i_img').value = '';
         const imageFileInput = document.getElementById('i_img_file');
         const imageStatus = document.getElementById('i_img_status');
         if (imageFileInput) imageFileInput.value = '';

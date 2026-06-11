@@ -295,8 +295,8 @@ function renderStore(container) {
                             '</select>',
                         '</div>',
                         '<div class="form-group">',
-                            '<label>URL картинки</label>',
-                            '<input type="text" id="store_item_img" class="form-control" value="' + escapeHTML(item ? item.image : 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80') + '">',
+                            '<label>Изображение товара</label>',
+                            '<input type="hidden" id="store_item_img" value="' + escapeHTML(item ? item.image : '') + '">',
                             '<div class="store-image-upload-row">',
                                 '<label class="btn btn-outline store-image-upload-button" for="store_item_img_file">Загрузить файл</label>',
                                 '<input type="file" id="store_item_img_file" accept="image/jpeg,image/png,image/webp" hidden>',
@@ -305,7 +305,7 @@ function renderStore(container) {
                             '<div class="text-muted store-image-upload-hint">JPG, PNG или WebP, не больше 5 МБ.</div>',
                             '<div class="store-image-preview-wrap">',
                                 '<span>Предпросмотр</span>',
-                                buildStoreImageTag(item ? item.image : 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80', item ? item.name : 'Новый товар', 'id="store_item_img_preview" class="store-image-preview"'),
+                                buildStoreImageTag(item ? item.image : '', item ? item.name : 'Новый товар', 'id="store_item_img_preview" class="store-image-preview"'),
                             '</div>',
                         '</div>',
                         '<div class="action-row mt-4">',
@@ -316,18 +316,7 @@ function renderStore(container) {
                 '</div>'
             ].join('');
             document.getElementById('store_item_overlay').onclick = closeBalanceModal;
-            const imageInput = document.getElementById('store_item_img');
             const imageFileInput = document.getElementById('store_item_img_file');
-            const imagePreview = document.getElementById('store_item_img_preview');
-            if (imageInput && imagePreview) {
-                imageInput.oninput = () => {
-                    imagePreview.onerror = () => {
-                        imagePreview.onerror = null;
-                        imagePreview.src = getStoreImageFallback();
-                    };
-                    imagePreview.src = getSafeStoreImageUrl(imageInput.value);
-                };
-            }
             if (imageFileInput) {
                 imageFileInput.onchange = () => uploadStoreImageFile(
                     imageFileInput.files && imageFileInput.files[0],
