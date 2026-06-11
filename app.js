@@ -97,6 +97,7 @@ const PURCHASE_LOG_DETAILS_TTL_MS = 24 * 60 * 60 * 1000;
 const VACATION_ROLE_ID = 'vacation';
 const REPRIMAND_STORE_SURCHARGE = 10;
 const MAX_USER_BALANCE = 100000;
+const SUPABASE_REQUEST_TIMEOUT_MS = 25000;
 const SUPABASE_URL = APP_CONFIG.supabaseUrl || '';
 const SUPABASE_ANON_KEY = APP_CONFIG.supabaseAnonKey || '';
 const TABLE_CONFIG = {
@@ -590,7 +591,23 @@ class SupabaseAuthGateway {
         if (!this.isConfigured()) {
             throw new Error('Supabase Auth is not configured.');
         }
-        const response = await fetch(this.url + path, options);
+        const requestOptions = { ...(options || {}) };
+        const timeoutMs = Number(requestOptions.timeoutMs || SUPABASE_REQUEST_TIMEOUT_MS);
+        delete requestOptions.timeoutMs;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        requestOptions.signal = controller.signal;
+        let response;
+        try {
+            response = await fetch(this.url + path, requestOptions);
+        } catch (error) {
+            if (error && error.name === 'AbortError') {
+                throw new Error('Supabase слишком долго отвечает. Попробуйте еще раз.');
+            }
+            throw error;
+        } finally {
+            clearTimeout(timeoutId);
+        }
         if (!response.ok) {
             let message = 'Supabase request failed with status ' + response.status;
             try {
@@ -1876,7 +1893,7 @@ function renderRegister(root) {
                         '<label>Задайте новый пароль</label>',
                         '<input type="password" id="r_password" class="form-control" required>',
                     '</div>',
-                    '<button type="submit" class="btn btn-primary">Активировать Аккаунт</button>',
+                    '<button type="submit" class="btn btn-primary" id="activateAccountBtn">Активировать Аккаунт</button>',
                 '</form>',
                 '<div class="switch-auth">',
                     'Уже есть аккаунт? <a href="#">Назад ко входу</a>',
@@ -1887,6 +1904,16 @@ function renderRegister(root) {
 
     document.getElementById('registerForm').onsubmit = async (e) => {
         e.preventDefault();
+        const registerForm = e.currentTarget;
+        const submitButton = document.getElementById('activateAccountBtn');
+        const formControls = Array.from(registerForm.querySelectorAll('input, button'));
+        formControls.forEach(control => { control.disabled = true; });
+        if (submitButton) {
+            submitButton.classList.add('is-loading');
+            submitButton.innerHTML = '<span class="btn-loading-spinner" aria-hidden="true"></span><span>Активируем аккаунт...</span>';
+        }
+
+        try {
         const codeValue = document.getElementById('r_code').value.trim();
         const pw = document.getElementById('r_password').value;
         const finalizeActivationLogin = (user, usernameLabel) => {
@@ -1980,6 +2007,15 @@ function renderRegister(root) {
           await db.save();
           await db.flushRemoteSave();
           finalizeActivationLogin(reservedUser, targetUn);
+        } finally {
+            if (document.body.contains(registerForm)) {
+                formControls.forEach(control => { control.disabled = false; });
+                if (submitButton) {
+                    submitButton.classList.remove('is-loading');
+                    submitButton.textContent = 'Активировать Аккаунт';
+                }
+            }
+        }
       };
   }
 

@@ -260,6 +260,26 @@ textarea.form-control {
   box-shadow: var(--shadow-glow);
 }
 
+.btn:disabled {
+  cursor: wait;
+  opacity: 0.78;
+  transform: none;
+}
+
+.btn.is-loading {
+  gap: 0.55rem;
+}
+
+.btn-loading-spinner {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  border: 2px solid rgba(255, 255, 255, 0.42);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: oauthSpin 0.7s linear infinite;
+}
+
 .btn-outline {
   background: transparent;
   border: 1px solid var(--border);
