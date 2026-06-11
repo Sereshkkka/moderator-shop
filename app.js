@@ -1940,6 +1940,36 @@ function renderRegister(root) {
             renderRoute();
         };
         const localCodeObj = db.data.codes.find(c => c.code === codeValue && !c.isUsed);
+        if (USE_SERVER_DATABASE_SYNC) {
+            try {
+                const passwordHash = await hashPassword(pw);
+                const response = await fetch('/api/activate-invite', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ inviteCode: codeValue, passwordHash })
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || !payload.ok || !payload.result) {
+                    throw new Error(payload.error || 'Не удалось активировать аккаунт.');
+                }
+                const result = payload.result;
+                if (result.user) upsertLocalUser(result.user);
+                if (result.code) {
+                    const existingCodeIndex = db.data.codes.findIndex(code => code.id === result.code.id);
+                    if (existingCodeIndex >= 0) db.data.codes[existingCodeIndex] = result.code;
+                    else db.data.codes.push(result.code);
+                }
+                db.saveLocal();
+                const activatedLocalUser = result.user
+                    ? (db.data.users.find(user => user.id === result.user.id) || result.user)
+                    : null;
+                finalizeActivationLogin(activatedLocalUser, result.username || 'пользователя');
+                return;
+            } catch (error) {
+                showToast(error.message || 'Не удалось активировать аккаунт по коду.', 'error');
+                return;
+            }
+        }
         if (!localCodeObj && authGateway.isConfigured()) {
             try {
                 const passwordHash = await hashPassword(pw);

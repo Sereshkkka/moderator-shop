@@ -488,6 +488,72 @@ async function saveSnapshotToDatabase(snapshot, actorUserId) {
   }
 }
 
+async function activateInviteCode(inviteCode, passwordHash) {
+  const normalizedCode = String(inviteCode || '').trim().toUpperCase();
+  const normalizedPasswordHash = String(passwordHash || '').trim().toLowerCase();
+  if (!normalizedCode || !/^[a-f0-9]{64}$/.test(normalizedPasswordHash)) {
+    throw new Error('Некорректный код приглашения или пароль.');
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    const codeResult = await client.query(
+      `select * from codes where upper(code) = $1 for update`,
+      [normalizedCode]
+    );
+    const codeRow = codeResult.rows[0];
+    if (!codeRow || codeRow.is_used) {
+      throw new Error('Неверный или уже использованный код приглашения.');
+    }
+
+    const userResult = await client.query(
+      `select * from users
+       where invite_code_id = $1
+         and company_id = $2
+         and lower(username) = lower($3)
+       for update`,
+      [codeRow.id, codeRow.company_id, codeRow.target_username]
+    );
+    const userRow = userResult.rows[0];
+    if (!userRow) {
+      throw new Error('Для этого кода не найден аккаунт, ожидающий активации.');
+    }
+
+    const updatedUserResult = await client.query(
+      `update users
+       set password_hash = $1,
+           is_pending_activation = false,
+           must_change_password = false,
+           account_status = $2,
+           invite_code_id = null
+       where id = $3
+       returning *`,
+      [normalizedPasswordHash, 'активен', userRow.id]
+    );
+    const updatedCodeResult = await client.query(
+      `update codes set is_used = true where id = $1 returning *`,
+      [codeRow.id]
+    );
+    const accessResult = await client.query(
+      `select user_id, company_id from user_company_access where user_id = $1`,
+      [userRow.id]
+    );
+    await client.query('commit');
+
+    return {
+      username: updatedUserResult.rows[0].username,
+      user: mapUserRow(updatedUserResult.rows[0], accessResult.rows),
+      code: mapCodeRow(updatedCodeResult.rows[0])
+    };
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 function sendJson(res, statusCode, payload) {
   const body = Buffer.from(JSON.stringify(payload), 'utf8');
   res.writeHead(statusCode, {
@@ -590,6 +656,21 @@ async function handleApi(req, res, pathname) {
       sendJson(res, 200, { ok: true });
     } catch (error) {
       sendJson(res, 500, { ok: false, error: error.message });
+    }
+    return true;
+  }
+
+  if (pathname === '/api/activate-invite' && req.method === 'POST') {
+    if (!pool) {
+      sendJson(res, 500, { ok: false, error: 'DATABASE_URL is not configured' });
+      return true;
+    }
+    try {
+      const body = await parseRequestBody(req);
+      const result = await activateInviteCode(body.inviteCode, body.passwordHash);
+      sendJson(res, 200, { ok: true, result });
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: error.message });
     }
     return true;
   }
