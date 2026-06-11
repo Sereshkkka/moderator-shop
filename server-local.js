@@ -316,7 +316,12 @@ async function ensureDatabaseCompat() {
 
 async function saveSnapshotToDatabase(snapshot, actorUserId) {
   const client = await pool.connect();
+  let transactionStarted = false;
   try {
+    await client.query('begin');
+    transactionStarted = true;
+    await client.query("select pg_advisory_xact_lock(hashtext('modshop_full_snapshot_save'))");
+
     const existingUsersResult = await client.query('select id, username, role_id, server_roles from users');
     const existingCompaniesResult = await client.query('select id from companies');
     const existingUsers = new Map(existingUsersResult.rows.map((row) => [row.id, row]));
@@ -365,8 +370,6 @@ async function saveSnapshotToDatabase(snapshot, actorUserId) {
         user.companyRoles = { ...existingServerRoles };
       }
     }
-
-    await client.query('begin');
 
     await client.query('delete from user_company_access');
     await client.query('delete from logs');
@@ -474,8 +477,11 @@ async function saveSnapshotToDatabase(snapshot, actorUserId) {
     );
 
     await client.query('commit');
+    transactionStarted = false;
   } catch (error) {
-    await client.query('rollback');
+    if (transactionStarted) {
+      await client.query('rollback');
+    }
     throw error;
   } finally {
     client.release();

@@ -1191,6 +1191,7 @@ function shouldPreferRemoteSnapshot(localSnapshot, remoteSnapshot) {
 class Database {
     constructor() {
         this.pendingRemoteSave = null;
+        this.remoteSaveQueue = Promise.resolve();
         this.remoteSaveTimer = null;
         this.remoteSyncReady = false;
         this.load();
@@ -1450,11 +1451,20 @@ class Database {
             clearTimeout(this.remoteSaveTimer);
         }
         this.remoteSaveTimer = setTimeout(() => {
-            this.pendingRemoteSave = this.saveRemote().catch((error) => {
+            const saveTask = this.remoteSaveQueue
+                .catch(() => {})
+                .then(() => this.saveRemote());
+            this.remoteSaveQueue = saveTask;
+            this.pendingRemoteSave = saveTask;
+            saveTask.catch((error) => {
                 console.error('Server database save failed', error);
                 if (!hasShownLocalPostgresSyncError) {
                     hasShownLocalPostgresSyncError = true;
                     showToast(error.message || 'Не удалось синхронизировать данные с Supabase.', 'error');
+                }
+            }).finally(() => {
+                if (this.pendingRemoteSave === saveTask) {
+                    this.pendingRemoteSave = null;
                 }
             });
         }, 200);
@@ -1466,11 +1476,17 @@ class Database {
             clearTimeout(this.remoteSaveTimer);
             this.remoteSaveTimer = null;
         }
-        this.pendingRemoteSave = this.saveRemote();
+        const saveTask = this.remoteSaveQueue
+            .catch(() => {})
+            .then(() => this.saveRemote());
+        this.remoteSaveQueue = saveTask;
+        this.pendingRemoteSave = saveTask;
         try {
-            await this.pendingRemoteSave;
+            await saveTask;
         } finally {
-            this.pendingRemoteSave = null;
+            if (this.pendingRemoteSave === saveTask) {
+                this.pendingRemoteSave = null;
+            }
         }
     }
 
