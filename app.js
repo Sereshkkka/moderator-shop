@@ -13,7 +13,6 @@ const DISCORD_OAUTH_LINK_USER_KEY = 'discord_oauth_link_user_id';
 const DISCORD_OAUTH_CALLBACK_HASH_KEY = 'discord_oauth_callback_hash';
 const POST_RELOAD_TOAST_KEY = 'post_reload_toast';
 const DEFAULT_AVATAR_URL_TEMPLATE = 'https://skins.mcskill.net/?name=insert&mode=5&fx=size&fy=size';
-const THEME_STORAGE_KEY = 'modshop_theme';
 const DEFAULT_BONUS_ROLE_PERMS = {
     helper: ['access_bonuses'],
     moderator: ['access_bonuses'],
@@ -58,32 +57,9 @@ function repairKnownRoleLabels(data) {
     return changed;
 }
 
-function getStoredTheme() {
-    try {
-        return localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark';
-    } catch (e) {
-        return 'dark';
-    }
-}
-
-function applyAppTheme(theme) {
-    const nextTheme = theme === 'light' ? 'light' : 'dark';
-    document.body.classList.toggle('light-theme', nextTheme === 'light');
-    document.body.classList.toggle('dark-theme', nextTheme !== 'light');
-    try { localStorage.setItem(THEME_STORAGE_KEY, nextTheme); } catch (e) {}
-    const toggle = document.getElementById('themeToggle');
-    if (toggle) {
-        toggle.classList.toggle('is-light', nextTheme === 'light');
-        toggle.setAttribute('aria-checked', nextTheme === 'light' ? 'true' : 'false');
-        toggle.setAttribute('title', nextTheme === 'light' ? 'Включить темную тему' : 'Включить светлую тему');
-    }
-}
-
-function toggleAppTheme() {
-    applyAppTheme(document.body.classList.contains('light-theme') ? 'dark' : 'light');
-}
-
-applyAppTheme(getStoredTheme());
+document.body.classList.remove('light-theme');
+document.body.classList.add('dark-theme');
+try { localStorage.removeItem('modshop_theme'); } catch (e) {}
 
 // --- Security & Configuration ---
 const PENDING_ROLE_ID = 'waiting';
@@ -2282,11 +2258,6 @@ function renderDashboard(root) {
                     '<div class="topbar">',
                         '<div class="topbar-brand-group">',
                             '<button type="button" class="topbar-brand" id="topbarHomeBtn" aria-label="Открыть профиль">ModShop</button>',
-                            '<button type="button" class="theme-toggle" id="themeToggle" role="switch" aria-checked="false" title="Включить светлую тему" aria-label="Переключить тему">',
-                                '<span class="theme-toggle-track">',
-                                    '<span class="theme-toggle-thumb"></span>',
-                                '</span>',
-                            '</button>',
                         '</div>',
                         '<div class="topbar-center-block">',
                             '<div class="topbar-current-server">' + eCompName + '</div>',
@@ -2363,12 +2334,6 @@ function renderDashboard(root) {
     if (topbarHomeBtn) {
         topbarHomeBtn.onclick = () => { switchTab('profile'); };
     }
-    const themeToggle = document.getElementById('themeToggle');
-    if (themeToggle) {
-        applyAppTheme(getStoredTheme());
-        themeToggle.onclick = toggleAppTheme;
-    }
-
     let lastTab = sessionStorage.getItem('active_tab') || 'profile';
     if (lastTab === 'staffprofile' && !getSelectedStaffProfileUser()) {
         lastTab = 'users';
