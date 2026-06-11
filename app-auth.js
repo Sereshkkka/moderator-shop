@@ -45,6 +45,28 @@ function buildDiscordOAuthUrl(mode) {
     return 'https://discord.com/oauth2/authorize?' + params.toString();
 }
 
+function captureDiscordOAuthCallback() {
+    const rawHash = window.location.hash || '';
+    if (!rawHash.includes('access_token=') && !rawHash.includes('error=')) return false;
+
+    try {
+        sessionStorage.setItem(DISCORD_OAUTH_CALLBACK_HASH_KEY, rawHash);
+    } catch (e) {}
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+
+    const root = document.getElementById('appRoot');
+    if (root) {
+        root.innerHTML = [
+            '<div class="oauth-callback-loading" role="status" aria-live="polite">',
+                '<div class="oauth-callback-spinner" aria-hidden="true"></div>',
+                '<strong>Завершаем привязку Discord</strong>',
+                '<span>Получаем профиль и возвращаем вас в ModShop.</span>',
+            '</div>'
+        ].join('');
+    }
+    return true;
+}
+
 async function fetchDiscordProfile(accessToken) {
     const response = await fetch('https://discord.com/api/v10/users/@me', {
         headers: {
@@ -58,7 +80,9 @@ async function fetchDiscordProfile(accessToken) {
 }
 
 async function handleDiscordOAuthCallback() {
-    const rawHash = window.location.hash || '';
+    let storedHash = '';
+    try { storedHash = sessionStorage.getItem(DISCORD_OAUTH_CALLBACK_HASH_KEY) || ''; } catch (e) {}
+    const rawHash = storedHash || window.location.hash || '';
     if (!rawHash.includes('access_token=') && !rawHash.includes('error=')) {
         return false;
     }
@@ -72,6 +96,7 @@ async function handleDiscordOAuthCallback() {
     history.replaceState(null, '', window.location.pathname + window.location.search);
 
     try {
+        sessionStorage.removeItem(DISCORD_OAUTH_CALLBACK_HASH_KEY);
         sessionStorage.removeItem(DISCORD_OAUTH_STATE_KEY);
         sessionStorage.removeItem(DISCORD_OAUTH_MODE_KEY);
         sessionStorage.removeItem(DISCORD_OAUTH_LINK_USER_KEY);

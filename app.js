@@ -10,6 +10,7 @@ const DISCORD_OAUTH_CLIENT_ID = APP_CONFIG.discordOAuthClientId || '149271075865
 const DISCORD_OAUTH_STATE_KEY = 'discord_oauth_state';
 const DISCORD_OAUTH_MODE_KEY = 'discord_oauth_mode';
 const DISCORD_OAUTH_LINK_USER_KEY = 'discord_oauth_link_user_id';
+const DISCORD_OAUTH_CALLBACK_HASH_KEY = 'discord_oauth_callback_hash';
 const POST_RELOAD_TOAST_KEY = 'post_reload_toast';
 const DEFAULT_AVATAR_URL_TEMPLATE = 'https://skins.mcskill.net/?name=insert&mode=5&fx=size&fy=size';
 const THEME_STORAGE_KEY = 'modshop_theme';
@@ -1555,6 +1556,14 @@ async function initApp() {
         }
     } catch (e) {}
 
+    const handledDiscordCallback = await handleDiscordOAuthCallback();
+    if (handledDiscordCallback) {
+        ensureValidCurrentCompany();
+        renderRoute();
+        showPendingReloadToast();
+        return;
+    }
+
     const authContext = await authGateway.restoreSessionContext();
     if (authContext && authContext.appUser) {
         applyAuthenticatedSnapshot(authContext.snapshot);
@@ -1567,13 +1576,6 @@ async function initApp() {
         }
     }
 
-    const handledDiscordCallback = await handleDiscordOAuthCallback();
-    if (handledDiscordCallback) {
-        ensureValidCurrentCompany();
-        renderRoute();
-        showPendingReloadToast();
-        return;
-    }
     renderRoute();
     showPendingReloadToast();
 }

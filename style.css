@@ -88,6 +88,42 @@ h1, h2, h3, h4, h5, h6 {
   padding: 2rem;
 }
 
+.oauth-callback-loading {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  color: var(--text-main);
+  text-align: center;
+}
+
+.oauth-callback-loading strong {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.25rem;
+}
+
+.oauth-callback-loading span {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.oauth-callback-spinner {
+  width: 42px;
+  height: 42px;
+  margin-bottom: 0.35rem;
+  border: 3px solid rgba(148, 163, 184, 0.3);
+  border-top-color: var(--secondary);
+  border-radius: 50%;
+  animation: oauthSpin 0.75s linear infinite;
+}
+
+@keyframes oauthSpin {
+  to { transform: rotate(360deg); }
+}
+
 .glass-panel {
   background: var(--glass-bg);
   backdrop-filter: blur(12px);

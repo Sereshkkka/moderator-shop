@@ -189,4 +189,5 @@ function updateCartBadge() {
     }
 }
 
+captureDiscordOAuthCallback();
 db.ready.then(() => initApp());
