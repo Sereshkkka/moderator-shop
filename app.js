@@ -1175,6 +1175,10 @@ function canViewInvisibleUsers() {
 }
 
 function hasGlobalControlAccess() {
+    return getCurrentUserRoleId() === 'admin';
+}
+
+function hasSystemSectionAccess() {
     return hasPermission('access_global_hub');
 }
 
@@ -2214,6 +2218,14 @@ function renderDashboardTab(target, content, isWebsiteAdmin) {
     }
     if (target === 'logs' && hasPermission('view_logs')) renderLogs(content);
     if (target === 'archive' && hasPermission('access_archive')) renderArchive(content);
+    if (target === 'system' && hasSystemSectionAccess()) {
+        content.innerHTML = [
+            '<section class="system-section">',
+                '<h3>Системный раздел</h3>',
+                '<p style="margin-top:1rem; color:var(--text-muted);">Здесь могла быть ваша реклама....</p>',
+            '</section>'
+        ].join('');
+    }
     if (target === 'globalctrl' && isWebsiteAdmin) renderGlobalControl(content);
 }
 
@@ -2224,6 +2236,7 @@ function canOpenDashboardTarget(target, isWebsiteAdmin) {
     if (target === 'staffprofile') return !!getSelectedStaffProfileUser();
     if (target === 'logs') return hasPermission('view_logs');
     if (target === 'archive') return hasPermission('access_archive');
+    if (target === 'system') return hasSystemSectionAccess();
     if (target === 'globalctrl') return !!isWebsiteAdmin;
     return false;
 }
@@ -2285,7 +2298,8 @@ function renderDashboard(root) {
                     '<a class="nav-link" data-target="users">Сотрудники сервера</a>',
                     hasPermission('view_logs') ? '<a class="nav-link" data-target="logs">Транзакции</a>' : '',
                     hasPermission('access_archive') ? '<a class="nav-link" data-target="archive" style="color:#94a3b8">Архив</a>' : '',
-                    isWebsiteAdmin ? '<a class="nav-link" data-target="globalctrl" style="color:var(--secondary)">Панель управления</a>' : '',
+                    hasSystemSectionAccess() ? '<a class="nav-link" data-target="system">Системный раздел</a>' : '',
+                    isWebsiteAdmin ? '<a class="nav-link" data-target="globalctrl" style="color:var(--secondary)">Панель управления сайтом</a>' : '',
                 '</nav>',
             '</aside>',
             '<main class="main-content">',
