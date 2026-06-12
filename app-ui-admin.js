@@ -198,7 +198,7 @@ function renderGlobalAudit(container) {
         '<div class="table-container">',
             '<table>',
                 '<thead>',
-                    '<tr><th>Дата</th><th>Сервер</th><th>Цель</th><th>Выполнил</th><th>Детали</th><th>Импакт</th></tr>',
+                    '<tr><th>Дата</th><th>Сервер</th><th>Цель</th><th>Выполнил</th><th>Детали</th><th>Действие</th></tr>',
                 '</thead>',
                 '<tbody>' + rows + '</tbody>',
             '</table>',

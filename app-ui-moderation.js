@@ -307,7 +307,7 @@ function renderLogs(container) {
     const canDeleteLog = hasPermission('all');
     const canClearLogs = canClearCurrentCompanyLogs();
     const showImpact = activeLogCategory !== 'admin';
-    const actionHeader = canDeleteLog ? '<th>Действие</th>' : '';
+    const actionHeader = canDeleteLog ? '<th>Управление</th>' : '';
     const currentCompany = db.data.companies.find(c => c.id === currentCompanyId);
     const companyName = currentCompany ? currentCompany.name : 'текущего сервера';
     const clearButtonHtml = canClearLogs
@@ -334,7 +334,7 @@ function renderLogs(container) {
                         '<th>Категория</th>',
                         '<th>Применено к</th>',
                         '<th>Исполнитель</th>',
-                        showImpact ? '<th>Импакт</th>' : '',
+                        showImpact ? '<th>Действие</th>' : '',
                         '<th>Лог / Детали</th>',
                         actionHeader,
                     '</tr>',
