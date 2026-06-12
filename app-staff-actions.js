@@ -242,16 +242,37 @@ window.updateRole = async (uid) => {
             }
         }
 
+        const previousRole = getUserRoleForCompany(u, currentCompanyId);
+        stopStaffProfileAutoRefresh();
         applyRoleToUserForCurrentCompany(u, newRole);
         if (u.id === currentUser.id) {
             applyRoleToUserForCurrentCompany(currentUser, newRole);
         }
-        if (newRole !== 'admin' && sessionStorage.getItem('active_tab') === 'globalctrl') {
-            sessionStorage.setItem('active_tab', 'profile');
+        try {
+            await db.save();
+            await db.flushRemoteSave();
+            const serverSnapshot = await db.loadRemote();
+            if (serverSnapshot) db.applyTableSnapshot(serverSnapshot);
+            const savedUser = db.data.users.find(user => user.id === uid);
+            if (!savedUser || getUserRoleForCompany(savedUser, currentCompanyId) !== newRole) {
+                throw new Error('Сервер не подтвердил изменение роли.');
+            }
+            if (newRole !== 'admin' && sessionStorage.getItem('active_tab') === 'globalctrl') {
+                sessionStorage.setItem('active_tab', 'profile');
+            }
+            showToast('Роль на сервере обновлена.');
+            closeBalanceModalAndReturnToStaffProfile(uid, true);
+            startStaffProfileAutoRefresh(uid);
+        } catch (error) {
+            const restoredUser = db.data.users.find(user => user.id === uid) || u;
+            applyRoleToUserForCurrentCompany(restoredUser, previousRole);
+            if (restoredUser.id === currentUser.id) {
+                applyRoleToUserForCurrentCompany(currentUser, previousRole);
+            }
+            closeBalanceModalAndReturnToStaffProfile(uid, true);
+            startStaffProfileAutoRefresh(uid);
+            showToast(error.message || 'Не удалось сохранить новую роль на сервере.', 'error');
         }
-        db.save();
-        showToast('Роль на сервере обновлена.');
-        closeBalanceModalAndReturnToStaffProfile(uid, true);
     }
 };
 
