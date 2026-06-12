@@ -55,26 +55,40 @@ async function getColumns(pool, table) {
   return result.rows.map((row) => row.column_name);
 }
 
+function serializeValue(value, dataType) {
+  if (value === null || value === undefined) return value;
+  if (dataType === 'json' || dataType === 'jsonb') {
+    return typeof value === 'string' ? value : JSON.stringify(value);
+  }
+  return value;
+}
+
 async function copyRows(source, targetClient, table) {
   const sourceColumns = await getColumns(source, table);
   const targetColumnsResult = await targetClient.query(
-    `select column_name
+    `select column_name, data_type
      from information_schema.columns
      where table_schema = 'public' and table_name = $1
      order by ordinal_position`,
     [table]
   );
-  const targetColumns = new Set(targetColumnsResult.rows.map((row) => row.column_name));
-  const columns = sourceColumns.filter((column) => targetColumns.has(column));
+  const targetColumnTypes = new Map(
+    targetColumnsResult.rows.map((row) => [row.column_name, row.data_type])
+  );
+  const columns = sourceColumns.filter((column) => targetColumnTypes.has(column));
   if (!columns.length) throw new Error(`No compatible columns found for ${table}.`);
 
   const rowsResult = await source.query(`select * from ${quoteIdentifier(table)}`);
   for (const row of rowsResult.rows) {
     const placeholders = columns.map((_, index) => `$${index + 1}`).join(', ');
-    await targetClient.query(
-      `insert into ${quoteIdentifier(table)} (${columns.map(quoteIdentifier).join(', ')}) values (${placeholders})`,
-      columns.map((column) => row[column])
-    );
+    try {
+      await targetClient.query(
+        `insert into ${quoteIdentifier(table)} (${columns.map(quoteIdentifier).join(', ')}) values (${placeholders})`,
+        columns.map((column) => serializeValue(row[column], targetColumnTypes.get(column)))
+      );
+    } catch (error) {
+      throw new Error(`Failed to copy ${table}: ${error.message}`);
+    }
   }
   return rowsResult.rows.length;
 }
