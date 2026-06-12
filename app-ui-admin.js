@@ -253,10 +253,10 @@ function renderGlobalSettings(container) {
         '<div class="glass-panel" style="padding:1.5rem; max-width:760px">',
             '<div style="display:grid; gap:1rem;">',
                 '<div style="padding:1rem 1.1rem; border-radius:12px; border:1px solid rgba(96,165,250,0.28); background:rgba(96,165,250,0.10); color:#dbeafe;">',
-                    '<strong>Синхронизация Supabase</strong><br>',
+                    '<strong>Подключение PostgreSQL</strong><br>',
                     '<span style="font-size:0.9rem; color:#bfdbfe;">',
                         (usingDatabaseSync
-                            ? 'Подключена. Сайт загружает и сохраняет данные в Supabase через сервер.'
+                            ? 'Подключено. Сайт загружает и сохраняет данные в PostgreSQL на VPS.'
                             : 'Отключена. Сейчас проект не использует серверную базу.'),
                     '</span>',
                 '</div>',
@@ -297,7 +297,7 @@ function renderGlobalSettings(container) {
         '<div class="glass-panel" style="padding:1.5rem; max-width:700px">',
             '<div style="display:grid; gap:1rem;">',
                 '<div style="padding:1rem 1.1rem; border-radius:12px; border:1px solid rgba(96,165,250,0.28); background:rgba(96,165,250,0.10); color:#dbeafe;">',
-                    '<strong>Синхронизация PostgreSQL</strong><br>',
+                    '<strong>Подключение PostgreSQL</strong><br>',
                     '<span style="font-size:0.9rem; color:#bfdbfe;">',
                         (usingPostgres
                             ? 'Подключена. Сайт автоматически загружает и сохраняет данные в локальный PostgreSQL.'
@@ -332,7 +332,7 @@ function renderGlobalSettings(container) {
         '<div class="glass-panel" style="padding:1.5rem; max-width:700px">',
             '<div style="display:grid; gap:1rem;">',
                 '<div style="padding:1rem 1.1rem; border-radius:12px; border:1px solid rgba(96,165,250,0.28); background:rgba(96,165,250,0.10); color:#dbeafe;">',
-                    '<strong>Синхронизация PostgreSQL</strong><br>',
+                    '<strong>Подключение PostgreSQL</strong><br>',
                     '<span style="font-size:0.9rem; color:#bfdbfe;">',
                         (usingPostgres
                             ? 'Подключена. Сайт автоматически загружает и сохраняет данные в локальный PostgreSQL.'
@@ -401,8 +401,8 @@ function renderGlobalSettings(container) {
         '<div class="glass-panel" style="padding:1.5rem; max-width:760px">',
             '<div style="display:grid; gap:1rem;">',
                 '<div style="padding:1rem 1.1rem; border-radius:12px; border:1px solid rgba(96,165,250,0.28); background:rgba(96,165,250,0.10); color:#dbeafe;">',
-                    '<strong>Синхронизация Supabase</strong><br>',
-                    '<span style="font-size:0.9rem; color:#bfdbfe;">' + (usingDatabaseSync ? 'Подключена. Данные сохраняются в Supabase через сервер.' : 'Отключена.') + '</span>',
+                    '<strong>Подключение PostgreSQL</strong><br>',
+                    '<span style="font-size:0.9rem; color:#bfdbfe;">' + (usingDatabaseSync ? 'Подключено. Данные сохраняются в PostgreSQL на VPS.' : 'Отключено.') + '</span>',
                 '</div>',
                 '<div style="padding:1rem 1.1rem; border-radius:12px; border:1px solid rgba(16,185,129,0.28); background:rgba(16,185,129,0.10); color:#bbf7d0;">',
                     '<strong>Webhook relay</strong><br>',
