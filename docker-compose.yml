@@ -1,4 +1,21 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: modshop-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-modshop}
+      POSTGRES_USER: ${POSTGRES_USER:-modshop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-modshop} -d ${POSTGRES_DB:-modshop}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./postgres-local-schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+
   modshop:
     build:
       context: .
@@ -11,6 +28,9 @@ services:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 4174
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "4174:4174"
     volumes:

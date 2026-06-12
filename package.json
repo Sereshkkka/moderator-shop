@@ -1,13 +1,14 @@
 {
-  "name": "coin-system-supabase",
+  "name": "modshop",
   "version": "1.0.0",
   "private": true,
-  "description": "ModShop server backed by Supabase Postgres",
+  "description": "ModShop server backed by PostgreSQL",
   "main": "server-local.js",
   "scripts": {
     "start": "node server-local.js",
     "dev": "node server-local.js",
-    "migrate:supabase": "node scripts/migrate-to-supabase.js"
+    "migrate:supabase": "node scripts/migrate-to-supabase.js",
+    "migrate:postgres": "node scripts/copy-postgres-database.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
