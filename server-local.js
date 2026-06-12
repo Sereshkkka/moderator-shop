@@ -74,11 +74,15 @@ function mapCompanyRow(row) {
   };
 }
 
-function mapUserRow(row, accessRows) {
+function mapUserRow(row, accessRows, allCompanyIds = []) {
   const companyAccess = accessRows
     .filter((entry) => entry.user_id === row.id)
     .map((entry) => entry.company_id);
-  const accessList = companyAccess.length ? companyAccess : [row.company_id];
+  const isWebsiteAdmin = row.role_id === 'admin'
+    || (row.server_roles && Object.values(row.server_roles).includes('admin'));
+  const accessList = isWebsiteAdmin
+    ? Array.from(new Set(allCompanyIds.concat(row.company_id).filter(Boolean)))
+    : (companyAccess.length ? companyAccess : [row.company_id]);
   const companyRoles = row.server_roles && typeof row.server_roles === 'object'
     ? { ...row.server_roles }
     : {};
@@ -86,6 +90,10 @@ function mapUserRow(row, accessRows) {
     ? { ...row.reprimands }
     : {};
   accessList.forEach((companyId) => {
+    if (isWebsiteAdmin) {
+      companyRoles[companyId] = 'admin';
+      return;
+    }
     if (!companyRoles[companyId]) {
       companyRoles[companyId] = row.role_id;
     }
@@ -93,7 +101,7 @@ function mapUserRow(row, accessRows) {
       companyRoles[companyId] = 'helper';
     }
   });
-  const roleId = row.role_id === 'waiting' ? 'helper' : row.role_id;
+  const roleId = isWebsiteAdmin ? 'admin' : (row.role_id === 'waiting' ? 'helper' : row.role_id);
 
   return {
     id: row.id,
@@ -167,8 +175,9 @@ function mapSystemConfigRow(row) {
 }
 
 function buildSnapshot(rows) {
+  const allCompanyIds = rows.companies.map((company) => company.id);
   return {
-    users: rows.users.map((row) => mapUserRow(row, rows.access)),
+    users: rows.users.map((row) => mapUserRow(row, rows.access, allCompanyIds)),
     codes: rows.codes.map(mapCodeRow),
     items: rows.items.map(mapItemRow),
     logs: rows.logs.map(mapLogRow),
@@ -418,6 +427,16 @@ async function saveSnapshotToDatabase(snapshot, actorUserId) {
       }
     }
 
+    for (const user of users) {
+      const isWebsiteAdmin = user.role === 'admin'
+        || (user.companyRoles && Object.values(user.companyRoles).includes('admin'));
+      if (isWebsiteAdmin) {
+        user.role = 'admin';
+        user.authorizedCompanies = Array.from(companyIds);
+        user.companyRoles = Object.fromEntries(Array.from(companyIds).map((companyId) => [companyId, 'admin']));
+      }
+    }
+
     await client.query('delete from user_company_access');
     await client.query('delete from logs');
     await client.query('delete from items');
@@ -644,20 +663,51 @@ async function updateUserRole(actorUserId, actorPasswordHash, targetUserId, comp
       throw new Error('Нельзя назначить роль своего уровня или выше.');
     }
 
+    let nextRoleId = target.role_id;
+    let nextServerRoles = { ...targetServerRoles };
+    if (newRoleId === 'admin') {
+      const companiesResult = await client.query('select id from companies');
+      nextRoleId = 'admin';
+      nextServerRoles = Object.fromEntries(companiesResult.rows.map((company) => [company.id, 'admin']));
+      await client.query(
+        `insert into user_company_access (user_id, company_id)
+         select $1, id from companies
+         on conflict do nothing`,
+        [targetUserId]
+      );
+    } else if (target.role_id === 'admin' || Object.values(targetServerRoles).includes('admin')) {
+      nextRoleId = newRoleId;
+      nextServerRoles = Object.fromEntries(
+        Object.keys(targetServerRoles).map((serverCompanyId) => [
+          serverCompanyId,
+          serverCompanyId === companyId ? newRoleId : 'helper'
+        ])
+      );
+      nextServerRoles[companyId] = newRoleId;
+      await client.query('delete from user_company_access where user_id = $1', [targetUserId]);
+      await client.query(
+        `insert into user_company_access (user_id, company_id)
+         select $1, company_id
+         from (values ($2::text), ($3::text)) as access(company_id)
+         on conflict do nothing`,
+        [targetUserId, target.company_id, companyId]
+      );
+    } else {
+      nextServerRoles[companyId] = newRoleId;
+      if (target.company_id === companyId) nextRoleId = newRoleId;
+    }
+
     const updatedResult = await client.query(
-      `update users
-       set server_roles = jsonb_set(coalesce(server_roles, '{}'::jsonb), array[$1], to_jsonb($2::text), true),
-           role_id = case when company_id = $1 then $2 else role_id end
-       where id = $3
-       returning *`,
-      [companyId, newRoleId, targetUserId]
+      `update users set server_roles = $1::jsonb, role_id = $2 where id = $3 returning *`,
+      [JSON.stringify(nextServerRoles), nextRoleId, targetUserId]
     );
     const accessResult = await client.query(
       `select user_id, company_id from user_company_access where user_id = $1`,
       [targetUserId]
     );
+    const companiesResult = await client.query('select id from companies');
     await client.query('commit');
-    return mapUserRow(updatedResult.rows[0], accessResult.rows);
+    return mapUserRow(updatedResult.rows[0], accessResult.rows, companiesResult.rows.map((company) => company.id));
   } catch (error) {
     await client.query('rollback');
     throw error;

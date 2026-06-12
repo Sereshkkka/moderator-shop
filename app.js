@@ -2534,6 +2534,7 @@ function buildPurchaseMentionIds(cartItems) {
 
 function hasUserCompanyAccess(user, companyId) {
     if (!user || !companyId) return false;
+    if (user.role === 'admin' || (user.companyRoles && Object.values(user.companyRoles).includes('admin'))) return true;
     if (user.companyId === companyId) return true;
     if (!Array.isArray(user.authorizedCompanies)) return false;
     return user.authorizedCompanies.includes(companyId);
