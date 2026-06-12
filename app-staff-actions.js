@@ -200,6 +200,7 @@ window.adjustUserReprimands = (targetUserId, delta) => {
 window.updateRole = async (uid) => {
     const newRole = document.getElementById('role_' + uid).value;
     const u = db.data.users.find(x => x.id === uid);
+    const saveButton = document.getElementById('role_save_' + uid);
     if (u) {
         if (!canAssignRoleToUser(u, newRole)) {
             showToast('Только sereshkkka может выдавать или забирать роль главного администратора.', 'error');
@@ -211,10 +212,19 @@ window.updateRole = async (uid) => {
             return;
         }
 
+        if (saveButton) {
+            saveButton.disabled = true;
+            saveButton.textContent = 'Сохраняем...';
+        }
+
         if (isSupabaseSessionActive()) {
             const authSession = authGateway.getStoredSession();
             if (!authSession || !authSession.access_token) {
                 showToast('Нет активной Supabase-сессии для смены роли.', 'error');
+                if (saveButton) {
+                    saveButton.disabled = false;
+                    saveButton.textContent = 'Сохранить';
+                }
                 return;
             }
             try {
@@ -238,7 +248,52 @@ window.updateRole = async (uid) => {
                 return;
             } catch (error) {
                 showToast(error.message || 'Не удалось изменить роль через RPC.', 'error');
+                if (saveButton) {
+                    saveButton.disabled = false;
+                    saveButton.textContent = 'Сохранить';
+                }
                 return;
+            }
+        }
+
+        if (USE_SERVER_DATABASE_SYNC) {
+            const roleUpdateController = new AbortController();
+            const roleUpdateTimeout = setTimeout(() => roleUpdateController.abort(), 10000);
+            try {
+                const response = await fetch('/api/update-user-role', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal: roleUpdateController.signal,
+                    body: JSON.stringify({
+                        actorUserId: currentUser.id,
+                        actorPasswordHash: currentUser.password,
+                        targetUserId: uid,
+                        companyId: currentCompanyId,
+                        newRoleId: newRole
+                    })
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || !payload.ok || !payload.user) {
+                    throw new Error(payload.error || 'Не удалось сохранить новую роль.');
+                }
+                upsertLocalUser(payload.user);
+                if (payload.user.id === currentUser.id) currentUser = db.data.users.find(user => user.id === currentUser.id) || currentUser;
+                showToast('Роль на сервере обновлена.');
+                closeBalanceModalAndReturnToStaffProfile(uid, true);
+                return;
+            } catch (error) {
+                const errorMessage = error && error.name === 'AbortError'
+                    ? 'Сервер слишком долго отвечает. Попробуйте ещё раз.'
+                    : (error.message || 'Не удалось сохранить новую роль на сервере.');
+                showToast(errorMessage, 'error');
+                return;
+            } finally {
+                clearTimeout(roleUpdateTimeout);
+                const currentSaveButton = document.getElementById('role_save_' + uid);
+                if (currentSaveButton) {
+                    currentSaveButton.disabled = false;
+                    currentSaveButton.textContent = 'Сохранить';
+                }
             }
         }
 
@@ -554,7 +609,7 @@ window.openRoleEditModal = (uid) => {
                     '</select>',
                 '</div>',
                 '<div class="action-row mt-4">',
-                    '<button class="btn btn-primary" onclick="updateRole(\'' + uid + '\')">Сохранить</button>',
+                    '<button class="btn btn-primary" id="role_save_' + uid + '" onclick="updateRole(\'' + uid + '\')">Сохранить</button>',
                     '<button class="btn btn-outline" onclick="closeBalanceModalAndReturnToStaffProfile(\'' + uid + '\')">Назад</button>',
                 '</div>',
             '</div>',

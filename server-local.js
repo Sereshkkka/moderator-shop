@@ -601,6 +601,71 @@ async function activateInviteCode(inviteCode, passwordHash) {
   }
 }
 
+async function updateUserRole(actorUserId, actorPasswordHash, targetUserId, companyId, newRoleId) {
+  if (!actorUserId || !actorPasswordHash || !targetUserId || !companyId || !newRoleId) {
+    throw new Error('Не указаны данные для изменения роли.');
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    const usersResult = await client.query(
+      `select * from users where id = any($1::text[]) for update`,
+      [[actorUserId, targetUserId]]
+    );
+    const actor = usersResult.rows.find((row) => row.id === actorUserId);
+    const target = usersResult.rows.find((row) => row.id === targetUserId);
+    if (!actor || !target) throw new Error('Пользователь не найден.');
+    if (String(actor.password_hash || '') !== String(actorPasswordHash || '')) {
+      throw new Error('Сессия пользователя не подтверждена.');
+    }
+
+    const rolesResult = await client.query(
+      `select id, tier, perms from roles where id = any($1::text[])`,
+      [Array.from(new Set([actor.role_id, target.role_id, newRoleId]))]
+    );
+    const roleMap = new Map(rolesResult.rows.map((role) => [role.id, role]));
+    const newRole = roleMap.get(newRoleId);
+    if (!newRole) throw new Error('Выбранная роль не найдена.');
+
+    const actorServerRoles = actor.server_roles && typeof actor.server_roles === 'object' ? actor.server_roles : {};
+    const targetServerRoles = target.server_roles && typeof target.server_roles === 'object' ? target.server_roles : {};
+    const actorRoleId = actorServerRoles[companyId] || actor.role_id;
+    const targetRoleId = targetServerRoles[companyId] || target.role_id;
+    const actorRole = roleMap.get(actorRoleId) || (await client.query('select id, tier, perms from roles where id = $1', [actorRoleId])).rows[0];
+    const targetRole = roleMap.get(targetRoleId) || (await client.query('select id, tier, perms from roles where id = $1', [targetRoleId])).rows[0];
+    const actorPerms = actorRole && Array.isArray(actorRole.perms) ? actorRole.perms : [];
+    const isPrimaryOwner = String(actor.username || '').toLowerCase() === 'sereshkkka';
+    const canEditRoles = isPrimaryOwner || actorRoleId === 'admin' || actorPerms.includes('all') || actorPerms.includes('edit_roles');
+    if (!canEditRoles) throw new Error('Недостаточно прав для изменения роли.');
+    if ((targetRoleId === 'admin' || newRoleId === 'admin') && !isPrimaryOwner) {
+      throw new Error('Только sereshkkka может выдавать или забирать роль администратора сайта.');
+    }
+    if (!isPrimaryOwner && (Number(newRole.tier) >= Number(actorRole.tier) || Number(targetRole && targetRole.tier) >= Number(actorRole.tier))) {
+      throw new Error('Нельзя назначить роль своего уровня или выше.');
+    }
+
+    const updatedResult = await client.query(
+      `update users
+       set server_roles = jsonb_set(coalesce(server_roles, '{}'::jsonb), array[$1], to_jsonb($2::text), true),
+           role_id = case when company_id = $1 then $2 else role_id end
+       where id = $3
+       returning *`,
+      [companyId, newRoleId, targetUserId]
+    );
+    const accessResult = await client.query(
+      `select user_id, company_id from user_company_access where user_id = $1`,
+      [targetUserId]
+    );
+    await client.query('commit');
+    return mapUserRow(updatedResult.rows[0], accessResult.rows);
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 function sendJson(res, statusCode, payload) {
   const body = Buffer.from(JSON.stringify(payload), 'utf8');
   res.writeHead(statusCode, {
@@ -727,6 +792,21 @@ async function handleApi(req, res, pathname) {
       const body = await parseRequestBody(req, MAX_STORE_IMAGE_REQUEST_BYTES);
       const image = saveStoreImage(body.dataUrl);
       sendJson(res, 201, { ok: true, image });
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: error.message });
+    }
+    return true;
+  }
+
+  if (pathname === '/api/update-user-role' && req.method === 'POST') {
+    if (!pool) {
+      sendJson(res, 500, { ok: false, error: 'DATABASE_URL is not configured' });
+      return true;
+    }
+    try {
+      const body = await parseRequestBody(req);
+      const user = await updateUserRole(body.actorUserId, body.actorPasswordHash, body.targetUserId, body.companyId, body.newRoleId);
+      sendJson(res, 200, { ok: true, user });
     } catch (error) {
       sendJson(res, 400, { ok: false, error: error.message });
     }
