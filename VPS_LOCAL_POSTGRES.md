@@ -100,23 +100,30 @@ docker compose up -d --build modshop
 
 ## Backups
 
-Create a backup manually:
+Install a verified daily backup at 04:15 server time:
 
 ```bash
-chmod +x scripts/backup-postgres.sh
+chmod +x scripts/install-postgres-backups.sh
+./scripts/install-postgres-backups.sh
+```
+
+The installer immediately creates the first backup and safely adds one cron entry. Backups are stored in `data/backups`, validated with `gzip -t`, and retained for 14 days by default.
+
+Check the schedule and available backups:
+
+```bash
+crontab -l
+ls -lh data/backups
+```
+
+Create an additional backup manually at any time:
+
+```bash
 ./scripts/backup-postgres.sh
 ```
 
-Backups are stored in `data/backups` and retained for 14 days by default.
-
-For a daily backup at 04:15 UTC:
+Check the automatic backup log:
 
 ```bash
-crontab -e
-```
-
-Add:
-
-```text
-15 4 * * * cd /root/moderator-shop && /bin/sh scripts/backup-postgres.sh >> data/backups/backup.log 2>&1
+tail -n 30 data/backups/backup.log
 ```
