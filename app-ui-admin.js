@@ -132,7 +132,9 @@ function renderGlobalUsers(container) {
     const allUsers = [...db.data.users].sort((a, b) => a.username.localeCompare(b.username));
 
     const rows = allUsers.map(u => {
-        const authCount = u.authorizedCompanies ? u.authorizedCompanies.length : 1;
+        const authCount = hasAllServersAccess(u)
+            ? db.data.companies.length
+            : (u.authorizedCompanies ? u.authorizedCompanies.length : 1);
         const eUsername = escapeHTML(u.username);
         const discordDisplay = u.discordId ? ('<code>' + escapeHTML(u.discordId) + '</code>') : '<span style="color:var(--text-muted)">Не привязан</span>';
         const canResetPassword = canResetManagedUserPassword(u);

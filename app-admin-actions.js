@@ -151,16 +151,20 @@ window.openAccessModal = (userId) => {
     const targetUser = db.data.users.find(u => u.id === userId);
     if (!targetUser) return;
     const remoteMode = isSupabaseSessionActive();
-    const utCompanies = targetUser.authorizedCompanies || [targetUser.companyId];
+    const roleGrantsAllServers = hasAllServersAccess(targetUser);
+    const utCompanies = roleGrantsAllServers
+        ? db.data.companies.map(company => company.id)
+        : (targetUser.authorizedCompanies || [targetUser.companyId]);
 
     const modalWrapper = ensureBalanceModalWrapper();
 
     const companyCheckboxes = db.data.companies.map(c => {
         const checked = utCompanies.includes(c.id) ? 'checked' : '';
+        const disabled = roleGrantsAllServers ? 'disabled' : '';
         const eCompName = escapeHTML(c.name);
         return [
             '<div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem; padding:0.5rem; background:rgba(255,255,255,0.05); border-radius:6px">',
-                '<input type="checkbox" class="access-check" value="' + c.id + '" ' + checked + ' id="access_' + c.id + '" style="width:18px; height:18px; cursor:pointer;"' + (remoteMode ? '' : ' onchange="toggleUserAccess(\'' + userId + '\', \'' + c.id + '\', this.checked)"') + '>',
+                '<input type="checkbox" class="access-check" value="' + c.id + '" ' + checked + ' ' + disabled + ' id="access_' + c.id + '" style="width:18px; height:18px; cursor:pointer;"' + (remoteMode ? '' : ' onchange="toggleUserAccess(\'' + userId + '\', \'' + c.id + '\', this.checked)"') + '>',
                 '<label for="access_' + c.id + '" style="font-size:1rem; cursor:pointer; flex:1">' + eCompName + '</label>',
             '</div>'
         ].join('');
@@ -170,6 +174,9 @@ window.openAccessModal = (userId) => {
         '<div class="modal-overlay" id="am_overlay">',
             '<div class="modal-content" style="max-width:450px" onclick="event.stopPropagation()">',
                 '<h3 style="margin-bottom:1.5rem">Ключи доступа: ' + escapeHTML(targetUser.username) + '</h3>',
+                roleGrantsAllServers
+                    ? '<div style="margin-bottom:1rem; padding:0.75rem; border:1px solid rgba(99,102,241,0.35); background:rgba(99,102,241,0.12); border-radius:6px;">Роль пользователя уже даёт доступ ко всем серверам.</div>'
+                    : '',
                 '<p class="text-muted mb-4" style="font-size:0.875rem">Отметьте серверы, к которым данный сотрудник будет иметь доступ через переключатель в шапке. Роль на каждом сервере можно менять отдельно уже внутри вкладки "Сотрудники сервера" на выбранном сервере.</p>',
                 '<div style="max-height:300px; overflow-y:auto; padding-right:0.5rem">',
                     companyCheckboxes,
@@ -271,6 +278,7 @@ window.toggleUserAccess = (userId, companyId, isChecked) => {
 };
 
 const PERMS_LIST = [
+    { key: 'access_all_servers', label: 'Доступ ко всем серверам' },
     { key: 'access_mod_panel', label: 'Доступ к Панели Модератора' },
     { key: 'generate_codes', label: 'Генерация Кодов' },
     { key: 'manage_store', label: 'Редактор Магазина' },

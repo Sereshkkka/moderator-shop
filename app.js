@@ -1075,6 +1075,11 @@ function isUserArchivedOnCompany(user, companyId = currentCompanyId) {
 
 function getUserActiveCompanies(user) {
     if (!user) return [];
+    if (hasAllServersAccess(user)) {
+        return db.data.companies
+            .map(company => company.id)
+            .filter(companyId => !isUserArchivedOnCompany(user, companyId));
+    }
     const companies = Array.isArray(user.authorizedCompanies) && user.authorizedCompanies.length
         ? [...new Set(user.authorizedCompanies)]
         : (user.companyId ? [user.companyId] : []);
@@ -1141,6 +1146,24 @@ function userHasPermission(user, perm, companyId = currentCompanyId) {
     if (!r) return false;
     if (r.id === 'admin') return true; // God Mode always has all perms
     return r.perms.includes(perm) || r.perms.includes('all');
+}
+
+function hasAllServersAccess(user = currentUser) {
+    if (!user) return false;
+    if (user.role === 'admin' || (user.companyRoles && Object.values(user.companyRoles).includes('admin'))) {
+        return true;
+    }
+
+    const assignedRoleIds = new Set([user.role]);
+    if (user.companyRoles && typeof user.companyRoles === 'object') {
+        Object.values(user.companyRoles).forEach(roleId => assignedRoleIds.add(roleId));
+    }
+
+    return db.data.roles.some(role =>
+        assignedRoleIds.has(role.id)
+        && Array.isArray(role.perms)
+        && (role.perms.includes('access_all_servers') || role.perms.includes('all'))
+    );
 }
 
 function isInvisibleUser(user, companyId = currentCompanyId) {
@@ -2044,13 +2067,10 @@ function renderRegister(root) {
   }
 
 window.switchAdminCompany = (newCompId) => {
-    const isWebsiteAdmin = hasGlobalControlAccess();
-    const myAllowed = isWebsiteAdmin
-        ? (currentUser.authorizedCompanies || [currentUser.companyId])
-        : getUserActiveCompanies(currentUser);
+    const myAllowed = getUserActiveCompanies(currentUser);
     const targetCompanyExists = db.data.companies.some(company => company.id === newCompId);
     
-    if (!isWebsiteAdmin && !myAllowed.includes(newCompId)) {
+    if (!myAllowed.includes(newCompId)) {
         showToast('У вас нет доступа к этому серверу!', 'error');
         return;
     }
@@ -2213,14 +2233,13 @@ function renderDashboard(root) {
     refreshCurrentUserReference();
     const isHighMod = hasPermission('access_mod_panel');
     const isWebsiteAdmin = hasGlobalControlAccess();
-    const myAllowed = isWebsiteAdmin
-        ? (currentUser.authorizedCompanies || [currentUser.companyId])
-        : getUserActiveCompanies(currentUser);
-    const availableCompanies = db.data.companies.filter(c => isWebsiteAdmin || myAllowed.includes(c.id));
+    const canAccessAllServers = hasAllServersAccess();
+    const myAllowed = getUserActiveCompanies(currentUser);
+    const availableCompanies = db.data.companies.filter(c => myAllowed.includes(c.id));
 
     let switchTriggerHtml = '';
     let switchOverlayHtml = '';
-    if (isWebsiteAdmin || myAllowed.length > 1) {
+    if (canAccessAllServers || myAllowed.length > 1) {
         const serverCards = availableCompanies.map(c => [
             '<button class="server-overlay-item ' + (currentCompanyId === c.id ? 'active' : '') + '" onclick="switchAdminCompany(\'' + c.id + '\')">',
                 '<span class="server-switcher-item-name">' + escapeHTML(c.name) + '</span>',
@@ -2534,7 +2553,7 @@ function buildPurchaseMentionIds(cartItems) {
 
 function hasUserCompanyAccess(user, companyId) {
     if (!user || !companyId) return false;
-    if (user.role === 'admin' || (user.companyRoles && Object.values(user.companyRoles).includes('admin'))) return true;
+    if (hasAllServersAccess(user)) return true;
     if (user.companyId === companyId) return true;
     if (!Array.isArray(user.authorizedCompanies)) return false;
     return user.authorizedCompanies.includes(companyId);
