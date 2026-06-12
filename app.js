@@ -1175,7 +1175,7 @@ function canViewInvisibleUsers() {
 }
 
 function hasGlobalControlAccess() {
-    return getCurrentUserRoleId() === 'admin';
+    return hasPermission('access_global_hub');
 }
 
 function canClearCurrentCompanyLogs() {
