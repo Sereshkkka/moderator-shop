@@ -2285,7 +2285,7 @@ function renderDashboard(root) {
                     (hasPermission('access_bonuses') || hasPermission('review_bonuses')) ? '<a class="nav-link" data-target="bonuses">Премии</a>' : '',
                     '<a class="nav-link" data-target="users">Сотрудники сервера</a>',
                     hasPermission('view_logs') ? '<a class="nav-link" data-target="logs">Транзакции</a>' : '',
-                    hasPermission('access_archive') ? '<a class="nav-link" data-target="archive" style="color:#94a3b8">Архив</a>' : '',
+                    hasPermission('access_archive') ? '<a class="nav-link" data-target="archive">Архив</a>' : '',
                     isWebsiteAdmin ? '<a class="nav-link" data-target="globalctrl" style="color:var(--secondary)">Панель управления</a>' : '',
                 '</nav>',
             '</aside>',
