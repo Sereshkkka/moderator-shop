@@ -55,7 +55,7 @@ function renderHighMod(container) {
                 '</div>',
                 '<div class="form-group">',
                     '<label>Цена (Сумма Монет)</label>',
-                    '<input type="text" id="i_price" class="form-control" value="0" inputmode="numeric" autocomplete="off">',
+                    '<input type="text" id="i_price" class="form-control" value="0" inputmode="numeric" maxlength="6" autocomplete="off">',
                 '</div>',
                 '<div class="form-group">',
                     '<label>Тип Позиции</label>',
@@ -286,7 +286,7 @@ function renderHighMod(container) {
         document.getElementById('i_edit_id').value = item.id;
         document.getElementById('i_name').value = item.name || '';
         document.getElementById('i_desc').value = item.description || '';
-        document.getElementById('i_price').value = Number(item.price || 0);
+        document.getElementById('i_price').value = Math.min(MAX_STORE_ITEM_PRICE, Number(item.price || 0));
         document.getElementById('i_type').value = item.itemType || 'item';
         document.getElementById('i_img').value = item.image || '';
         document.getElementById('storeItemFormTitle').textContent = 'Редактирование товара';

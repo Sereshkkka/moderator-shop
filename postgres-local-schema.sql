@@ -61,7 +61,7 @@ create table if not exists items (
     company_id text not null references companies(id) on delete cascade,
     name text not null,
     description text not null default '',
-    price integer not null default 0,
+    price integer not null default 0 constraint items_price_range check (price between 0 and 100000),
     item_type text not null default 'item',
     image text not null default '',
     created_at timestamptz not null default now()

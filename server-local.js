@@ -23,6 +23,7 @@ const UPLOADS_DIR = path.join(ROOT, 'uploads');
 const MAX_STORE_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_STORE_IMAGE_REQUEST_BYTES = 7 * 1024 * 1024;
 const UNUSED_STORE_IMAGE_GRACE_MS = 60 * 60 * 1000;
+const MAX_STORE_ITEM_PRICE = 100000;
 const DEFAULT_AVATAR_URL_TEMPLATE = 'https://skins.mcskill.net/?name=insert&mode=5&fx=size&fy=size';
 
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -145,7 +146,7 @@ function mapItemRow(row) {
     companyId: row.company_id,
     name: row.name,
     description: row.description || '',
-    price: row.price || 0,
+    price: Math.max(0, Math.min(MAX_STORE_ITEM_PRICE, Number(row.price) || 0)),
     itemType: row.item_type || 'item',
     image: row.image || ''
   };
@@ -403,6 +404,17 @@ async function ensureDatabaseCompat() {
     alter table if exists system_config
     add column if not exists bonus_permissions_initialized boolean not null default false
   `);
+  await pool.query(`update items set price = greatest(0, least(price, ${MAX_STORE_ITEM_PRICE})) where price < 0 or price > ${MAX_STORE_ITEM_PRICE}`);
+  await pool.query(`
+    do $$
+    begin
+      if not exists (
+        select 1 from pg_constraint where conname = 'items_price_range'
+      ) then
+        alter table items add constraint items_price_range check (price between 0 and ${MAX_STORE_ITEM_PRICE});
+      end if;
+    end $$
+  `);
 }
 
 async function saveSnapshotToDatabase(snapshot, actorUserId) {
@@ -547,7 +559,7 @@ async function saveSnapshotToDatabase(snapshot, actorUserId) {
     for (const item of items) {
       await client.query(
         'insert into items (id, company_id, name, description, price, item_type, image) values ($1, $2, $3, $4, $5, $6, $7)',
-        [item.id, item.companyId, item.name, item.description || '', item.price || 0, item.itemType || 'item', item.image || '']
+        [item.id, item.companyId, item.name, item.description || '', Math.max(0, Math.min(MAX_STORE_ITEM_PRICE, Number(item.price) || 0)), item.itemType || 'item', item.image || '']
       );
     }
 

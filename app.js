@@ -77,6 +77,7 @@ const PURCHASE_LOG_DETAILS_TTL_MS = 24 * 60 * 60 * 1000;
 const VACATION_ROLE_ID = 'vacation';
 const REPRIMAND_STORE_SURCHARGE = 10;
 const MAX_USER_BALANCE = 100000;
+const MAX_STORE_ITEM_PRICE = 100000;
 const SUPABASE_REQUEST_TIMEOUT_MS = 25000;
 const SUPABASE_URL = APP_CONFIG.supabaseUrl || '';
 const SUPABASE_ANON_KEY = APP_CONFIG.supabaseAnonKey || '';
@@ -2453,6 +2454,14 @@ function getValidatedNonNegativePrice(inputId) {
         showToast('Цена не может быть отрицательной.', 'error');
         if (input) {
             input.value = '0';
+            input.focus();
+        }
+        return null;
+    }
+    if (!Number.isSafeInteger(parsedValue) || parsedValue > MAX_STORE_ITEM_PRICE) {
+        showToast('Цена товара не может превышать 100 000 монет.', 'error');
+        if (input) {
+            input.value = String(MAX_STORE_ITEM_PRICE);
             input.focus();
         }
         return null;

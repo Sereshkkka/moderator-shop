@@ -333,7 +333,7 @@ function renderStore(container) {
                         '</div>',
                         '<div class="form-group">',
                             '<label>Цена</label>',
-                            '<input type="text" id="store_item_price" class="form-control" value="' + (item ? item.price : 0) + '" inputmode="numeric" autocomplete="off">',
+                            '<input type="text" id="store_item_price" class="form-control" value="' + Math.min(MAX_STORE_ITEM_PRICE, Number(item ? item.price : 0) || 0) + '" inputmode="numeric" maxlength="6" autocomplete="off">',
                         '</div>',
                         '<div class="form-group">',
                             '<label>Тип позиции</label>',
