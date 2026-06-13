@@ -115,6 +115,45 @@ function buildStoreImageTag(src, alt, extraAttrs) {
     return '<img src="' + escapeHTML(getSafeStoreImageUrl(src)) + '" alt="' + escapeHTML(alt || '') + '" onerror="this.onerror=null;this.src=\'' + getStoreImageFallback() + '\';" ' + (extraAttrs || '') + '>';
 }
 
+const pendingStoreImageUrls = new Set();
+
+function isLocalStoreImageUrl(url) {
+    return /^\/uploads\/[a-z0-9-]+\.(?:png|jpe?g|webp)$/i.test(String(url || ''));
+}
+
+async function releaseUnusedStoreImage(url) {
+    if (!isLocalStoreImageUrl(url)) return;
+    try {
+        await fetch('/api/store-images', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+        });
+    } catch (error) {
+        console.error('Could not release unused store image', error);
+    }
+}
+
+function releasePendingStoreImage(url) {
+    if (!pendingStoreImageUrls.has(url)) return;
+    pendingStoreImageUrls.delete(url);
+    releaseUnusedStoreImage(url);
+}
+
+function commitPendingStoreImage(url) {
+    pendingStoreImageUrls.delete(url);
+}
+
+async function releaseStoreImageAfterSave(url) {
+    if (!isLocalStoreImageUrl(url)) return;
+    try {
+        await db.flushRemoteSave();
+    } catch (error) {
+        return;
+    }
+    await releaseUnusedStoreImage(url);
+}
+
 async function uploadStoreImageFile(file, urlInputId, previewId, statusId) {
     if (!file) return;
     const statusNode = document.getElementById(statusId);
@@ -145,8 +184,11 @@ async function uploadStoreImageFile(file, urlInputId, previewId, statusId) {
         }
         const urlInput = document.getElementById(urlInputId);
         const preview = previewId ? document.getElementById(previewId) : null;
+        const previousUrl = urlInput ? urlInput.value : '';
         if (urlInput) urlInput.value = payload.image.url;
         if (preview) preview.src = payload.image.url;
+        pendingStoreImageUrls.add(payload.image.url);
+        if (previousUrl && previousUrl !== payload.image.url) releasePendingStoreImage(previousUrl);
         if (statusNode) statusNode.textContent = 'Загружено';
         showToast('Изображение загружено на сервер.');
     } catch (error) {
@@ -154,6 +196,12 @@ async function uploadStoreImageFile(file, urlInputId, previewId, statusId) {
         showToast(error.message || 'Не удалось загрузить изображение.', 'error');
     }
 }
+
+window.cancelStoreItemModal = () => {
+    const imageInput = document.getElementById('store_item_img');
+    if (imageInput) releasePendingStoreImage(imageInput.value);
+    closeBalanceModal();
+};
 
 window.uploadStoreImageFile = uploadStoreImageFile;
 
@@ -310,12 +358,12 @@ function renderStore(container) {
                         '</div>',
                         '<div class="action-row mt-4">',
                             '<button class="btn btn-primary" onclick="saveStoreItemFromModal()">' + (isEdit ? 'Сохранить' : 'Добавить товар') + '</button>',
-                            '<button class="btn btn-outline" onclick="closeBalanceModal()">Отмена</button>',
+                            '<button class="btn btn-outline" onclick="cancelStoreItemModal()">Отмена</button>',
                         '</div>',
                     '</div>',
                 '</div>'
             ].join('');
-            document.getElementById('store_item_overlay').onclick = closeBalanceModal;
+            document.getElementById('store_item_overlay').onclick = cancelStoreItemModal;
             const imageFileInput = document.getElementById('store_item_img_file');
             if (imageFileInput) {
                 imageFileInput.onchange = () => uploadStoreImageFile(
@@ -349,8 +397,11 @@ function renderStore(container) {
                     showToast('Товар не найден в текущем сервере.', 'error');
                     return;
                 }
+                const previousImage = item.image || '';
                 Object.assign(item, itemPayload);
                 db.save();
+                commitPendingStoreImage(itemPayload.image);
+                if (previousImage && previousImage !== itemPayload.image) releaseStoreImageAfterSave(previousImage);
                 closeBalanceModal();
                 showToast('Товар обновлен.');
                 renderStore(document.getElementById('dashboardContent'));
@@ -372,6 +423,7 @@ function renderStore(container) {
                         item_type_value: itemPayload.itemType,
                         item_image: itemPayload.image
                     });
+                    commitPendingStoreImage(itemPayload.image);
                     closeBalanceModal();
                     await syncStoreReadSnapshot();
                     showToast('Товар опубликован через безопасный server-side RPC.');
@@ -393,6 +445,7 @@ function renderStore(container) {
                 image: itemPayload.image
             });
             db.save();
+            commitPendingStoreImage(itemPayload.image);
             closeBalanceModal();
             showToast('Предмет загружен на витрину этой компании');
             renderStore(document.getElementById('dashboardContent'));
@@ -447,8 +500,10 @@ function renderStore(container) {
                 showToast('Товар не найден в текущем сервере.', 'error');
                 return;
             }
+            const removedImage = item.image || '';
             db.data.items = db.data.items.filter(i => i.id !== id);
             db.save();
+            releaseStoreImageAfterSave(removedImage);
             closeBalanceModal();
             showToast('Предмет убран');
             renderStore(document.getElementById('dashboardContent'));

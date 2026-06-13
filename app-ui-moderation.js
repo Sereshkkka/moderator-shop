@@ -220,6 +220,8 @@ function renderHighMod(container) {
         aForm.style.display = 'block';
     };
     document.getElementById('btnCancelItem').onclick = () => {
+        const imageUrl = document.getElementById('i_img').value;
+        releasePendingStoreImage(imageUrl);
         resetStoreItemForm();
         aForm.style.display = 'none';
     };
@@ -235,12 +237,14 @@ function renderHighMod(container) {
             itemType: document.getElementById('i_type').value || 'item',
             image: document.getElementById('i_img').value.trim()
         };
+        let previousImage = '';
         if (editId) {
             const item = db.data.items.find(i => i.id === editId && i.companyId === currentCompanyId);
             if (!item) {
                 showToast('Товар не найден в магазине текущего сервера.', 'error');
                 return;
             }
+            previousImage = item.image || '';
             Object.assign(item, itemPayload);
         } else {
             db.data.items.push({
@@ -250,6 +254,8 @@ function renderHighMod(container) {
             });
         }
         db.save();
+        commitPendingStoreImage(itemPayload.image);
+        if (previousImage && previousImage !== itemPayload.image) releaseStoreImageAfterSave(previousImage);
         const successMessage = editId ? 'Товар обновлён.' : 'Предмет загружен на витрину этого сервера';
         resetStoreItemForm();
         aForm.style.display = 'none';
@@ -289,8 +295,11 @@ function renderHighMod(container) {
         aForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
     window.deleteItem = (id) => {
+        const item = db.data.items.find(i => i.id === id && i.companyId === currentCompanyId);
+        const removedImage = item ? item.image || '' : '';
         db.data.items = db.data.items.filter(i => i.id !== id);
         db.save();
+        releaseStoreImageAfterSave(removedImage);
         showToast('Предмет убран');
         renderStoreTable();
     };

@@ -22,6 +22,7 @@ const ROOT = __dirname;
 const UPLOADS_DIR = path.join(ROOT, 'uploads');
 const MAX_STORE_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_STORE_IMAGE_REQUEST_BYTES = 7 * 1024 * 1024;
+const UNUSED_STORE_IMAGE_GRACE_MS = 60 * 60 * 1000;
 const DEFAULT_AVATAR_URL_TEMPLATE = 'https://skins.mcskill.net/?name=insert&mode=5&fx=size&fy=size';
 
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -242,6 +243,40 @@ function saveStoreImage(dataUrl) {
   const fileName = `${Date.now()}-${crypto.randomBytes(12).toString('hex')}.${imageType.extension}`;
   fs.writeFileSync(path.join(UPLOADS_DIR, fileName), buffer, { flag: 'wx' });
   return { url: `/uploads/${fileName}`, mimeType: imageType.mimeType, size: buffer.length };
+}
+
+function getLocalStoreImageFileName(imageUrl) {
+  const value = String(imageUrl || '').trim();
+  const match = value.match(/^\/uploads\/([a-z0-9-]+\.(?:png|jpe?g|webp))$/i);
+  return match ? match[1] : '';
+}
+
+async function deleteUnusedStoreImage(imageUrl) {
+  const fileName = getLocalStoreImageFileName(imageUrl);
+  if (!fileName || !pool) return false;
+  const usedResult = await pool.query('select 1 from items where image = $1 limit 1', [`/uploads/${fileName}`]);
+  if (usedResult.rowCount) return false;
+  const filePath = path.join(UPLOADS_DIR, fileName);
+  if (!fs.existsSync(filePath)) return false;
+  fs.unlinkSync(filePath);
+  return true;
+}
+
+async function cleanupUnusedStoreImages(minAgeMs = UNUSED_STORE_IMAGE_GRACE_MS) {
+  if (!pool) return 0;
+  const usedResult = await pool.query("select image from items where image like '/uploads/%'");
+  const usedFiles = new Set(usedResult.rows.map((row) => getLocalStoreImageFileName(row.image)).filter(Boolean));
+  const cutoff = Date.now() - minAgeMs;
+  let deleted = 0;
+  for (const entry of fs.readdirSync(UPLOADS_DIR, { withFileTypes: true })) {
+    if (!entry.isFile() || usedFiles.has(entry.name)) continue;
+    if (!getLocalStoreImageFileName(`/uploads/${entry.name}`)) continue;
+    const filePath = path.join(UPLOADS_DIR, entry.name);
+    if (fs.statSync(filePath).mtimeMs > cutoff) continue;
+    fs.unlinkSync(filePath);
+    deleted += 1;
+  }
+  return deleted;
 }
 
 function getPublicAppConfig() {
@@ -544,6 +579,7 @@ async function saveSnapshotToDatabase(snapshot, actorUserId) {
 
     await client.query('commit');
     transactionStarted = false;
+    cleanupUnusedStoreImages().catch((error) => console.error('Store image cleanup failed:', error));
   } catch (error) {
     if (transactionStarted) {
       await client.query('rollback');
@@ -848,6 +884,17 @@ async function handleApi(req, res, pathname) {
     return true;
   }
 
+  if (pathname === '/api/store-images' && req.method === 'DELETE') {
+    try {
+      const body = await parseRequestBody(req);
+      const deleted = await deleteUnusedStoreImage(body.url);
+      sendJson(res, 200, { ok: true, deleted });
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: error.message });
+    }
+    return true;
+  }
+
   if (pathname === '/api/update-user-role' && req.method === 'POST') {
     if (!pool) {
       sendJson(res, 500, { ok: false, error: 'DATABASE_URL is not configured' });
@@ -960,7 +1007,11 @@ function startServer() {
 
     console.log(`Database connection is configured${shouldUseDatabaseSsl(DATABASE_URL) ? ' with SSL' : ''}.`);
     ensureDatabaseCompat()
-      .then(() => console.log('Database compatibility check completed.'))
+      .then(async () => {
+        console.log('Database compatibility check completed.');
+        const deleted = await cleanupUnusedStoreImages();
+        if (deleted) console.log(`Removed ${deleted} unused store image(s).`);
+      })
       .catch((error) => console.error('Database compatibility check failed:', error));
   });
 }
