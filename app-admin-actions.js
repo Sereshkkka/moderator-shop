@@ -20,7 +20,7 @@ window.openDiscordEditModal = (userId) => {
             '</div>',
         '</div>'
     ].join('');
-    document.getElementById('dm_overlay').onclick = closeBalanceModal;
+    bindModalOverlayClose('dm_overlay');
     const saveBtn = document.getElementById('discord_edit_save_btn');
     if (saveBtn) {
         saveBtn.onclick = () => window.saveDiscordEdit(userId);
@@ -105,7 +105,7 @@ window.openResetPasswordModal = (userId) => {
         '</div>'
     ].join('');
 
-    document.getElementById('rp_overlay').onclick = closeBalanceModal;
+    bindModalOverlayClose('rp_overlay');
     const executeBtn = document.getElementById('reset_password_execute_btn');
     if (executeBtn) {
         executeBtn.onclick = () => window.executeUserPasswordReset(userId);
@@ -187,7 +187,7 @@ window.openAccessModal = (userId) => {
             '</div>',
         '</div>'
     ].join('');
-    document.getElementById('am_overlay').onclick = closeBalanceModal;
+    bindModalOverlayClose('am_overlay');
 };
 
 window.saveUserCompanyAccess = async (userId) => {
@@ -337,7 +337,7 @@ window.openRoleModal = (roleId) => {
             '</div>',
         '</div>'
     ].join('');
-    document.getElementById('rm_overlay').onclick = closeBalanceModal;
+    bindModalOverlayClose('rm_overlay');
 };
 
 window.saveRole = (oldId) => {

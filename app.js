@@ -2696,7 +2696,7 @@ function openExistingUserAccessPrompt(existingUser) {
         '</div>'
     ].join('');
 
-    document.getElementById('existing_user_access_overlay').onclick = closeBalanceModal;
+    bindModalOverlayClose('existing_user_access_overlay');
     const yesBtn = document.getElementById('existing_user_access_yes');
     if (yesBtn) {
         yesBtn.onclick = () => grantExistingUserAccessToCurrentServer(existingUser.id);

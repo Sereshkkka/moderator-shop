@@ -209,7 +209,7 @@ window.openPasswordChangeModal = () => {
         '</div>'
     ].join('');
 
-    document.getElementById('pm_overlay').onclick = closeBalanceModal;
+    bindModalOverlayClose('pm_overlay');
 };
 
 window.executePasswordChange = async (forcedMode) => {

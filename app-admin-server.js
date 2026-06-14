@@ -90,7 +90,7 @@ window.globalDeleteUser = (uid) => {
             '</div>',
         '</div>'
     ].join('');
-    document.getElementById('del_overlay').onclick = closeBalanceModal;
+    bindModalOverlayClose('del_overlay');
 };
 
 window.executeGlobalDelete = (uid) => {
@@ -196,7 +196,7 @@ window.openServerWebhookModal = (cId) => {
             '</div>',
         '</div>'
     ].join('');
-    document.getElementById('swm_overlay').onclick = closeBalanceModal;
+    bindModalOverlayClose('swm_overlay');
 };
 
 window.testServerWebhook = async (cId) => {
@@ -317,7 +317,7 @@ window.openCompanyRenameModal = (cId) => {
         '</div>'
     ].join('');
 
-    document.getElementById('bm_overlay').onclick = closeBalanceModal;
+    bindModalOverlayClose('bm_overlay');
 };
 
 window.executeCompanyRename = async (cId) => {
@@ -394,7 +394,7 @@ window.openCompanyDeleteModal = (cId) => {
         '</div>'
     ].join('');
 
-    document.getElementById('bm_overlay').onclick = closeBalanceModal;
+    bindModalOverlayClose('bm_overlay');
 };
 
 window.executeCompanyDelete = async (cId) => {

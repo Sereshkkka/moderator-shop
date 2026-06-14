@@ -48,6 +48,33 @@ window.closeBalanceModal = () => {
     w.replaceChildren();
 };
 
+window.bindModalOverlayClose = (overlayOrId, closeHandler = closeBalanceModal) => {
+    const overlay = typeof overlayOrId === 'string'
+        ? document.getElementById(overlayOrId)
+        : overlayOrId;
+    if (!overlay) return;
+
+    let pointerStart = null;
+    overlay.addEventListener('pointerdown', event => {
+        pointerStart = event.button === 0 && event.target === overlay
+            ? { id: event.pointerId, x: event.clientX, y: event.clientY }
+            : null;
+    });
+    overlay.addEventListener('pointerup', event => {
+        const startedOnOverlay = pointerStart && pointerStart.id === event.pointerId;
+        const movement = startedOnOverlay
+            ? Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y)
+            : Infinity;
+        pointerStart = null;
+        if (event.button === 0 && startedOnOverlay && event.target === overlay && movement <= 6) {
+            closeHandler(event);
+        }
+    });
+    overlay.addEventListener('pointercancel', () => {
+        pointerStart = null;
+    });
+};
+
 window.closeBalanceModalAndReturnToStaffProfile = (targetUserId, shouldRefreshProfile) => {
     closeBalanceModal();
     if (targetUserId && shouldRefreshProfile) {
@@ -356,7 +383,7 @@ window.archiveUser = (uid) => {
         '</div>'
     ].join('');
 
-    document.getElementById('bm_overlay').onclick = closeBalanceModal;
+    bindModalOverlayClose('bm_overlay');
 };
 
 window.executeArchiveUser = async (uid) => {
@@ -518,7 +545,7 @@ window.deleteArchivedUser = (uid) => {
         '</div>'
     ].join('');
 
-    document.getElementById('bm_overlay').onclick = closeBalanceModal;
+    bindModalOverlayClose('bm_overlay');
 };
 
 window.openBalanceEditModal = (targetUserId) => {
@@ -559,7 +586,7 @@ window.openBalanceEditModal = (targetUserId) => {
             '</div>',
         '</div>'
     ].join('');
-    document.getElementById('bm_overlay').onclick = () => closeBalanceModalAndReturnToStaffProfile(targetUserId);
+    bindModalOverlayClose('bm_overlay', () => closeBalanceModalAndReturnToStaffProfile(targetUserId));
     const toggleRoot = document.getElementById('bm_op_toggle');
     const hiddenInput = document.getElementById('bm_op');
     if (toggleRoot && hiddenInput) {
@@ -615,7 +642,7 @@ window.openRoleEditModal = (uid) => {
             '</div>',
         '</div>'
     ].join('');
-    document.getElementById('bm_overlay').onclick = () => closeBalanceModalAndReturnToStaffProfile(uid);
+    bindModalOverlayClose('bm_overlay', () => closeBalanceModalAndReturnToStaffProfile(uid));
 };
 
 window.executeDeleteArchivedUser = async (uid) => {
@@ -747,5 +774,5 @@ window.openArchivedUserModal = (uid) => {
         '</div>'
     ].join('');
 
-    document.getElementById('bm_overlay').onclick = closeBalanceModal;
+    bindModalOverlayClose('bm_overlay');
 };

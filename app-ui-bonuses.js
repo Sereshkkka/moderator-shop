@@ -165,7 +165,7 @@ function openBonusRequestModal() {
             '</div>',
         '</div>'
     ].join('');
-    document.getElementById('bonus_overlay').onclick = closeBalanceModal;
+    bindModalOverlayClose('bonus_overlay');
 }
 
 function setBonusRequestsFilter(filter) {
@@ -231,7 +231,7 @@ function openBonusReviewCommentModal(requestId) {
             '</div>',
         '</div>'
     ].join('');
-    document.getElementById('bonus_review_comment_overlay').onclick = closeBalanceModal;
+    bindModalOverlayClose('bonus_review_comment_overlay');
 }
 
 function openBonusAmountEditModal(requestId) {
@@ -256,7 +256,7 @@ function openBonusAmountEditModal(requestId) {
             '</div>',
         '</div>'
     ].join('');
-    document.getElementById('bonus_amount_edit_overlay').onclick = closeBalanceModal;
+    bindModalOverlayClose('bonus_amount_edit_overlay');
 }
 
 async function saveBonusAmountEdit(requestId) {

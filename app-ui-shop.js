@@ -363,7 +363,7 @@ function renderStore(container) {
                     '</div>',
                 '</div>'
             ].join('');
-            document.getElementById('store_item_overlay').onclick = cancelStoreItemModal;
+            bindModalOverlayClose('store_item_overlay', cancelStoreItemModal);
             const imageFileInput = document.getElementById('store_item_img_file');
             if (imageFileInput) {
                 imageFileInput.onchange = () => uploadStoreImageFile(
@@ -471,7 +471,7 @@ function renderStore(container) {
                     '</div>',
                 '</div>'
             ].join('');
-            document.getElementById('store_delete_overlay').onclick = closeBalanceModal;
+            bindModalOverlayClose('store_delete_overlay');
         };
 
         window.deleteItem = async (id) => {
