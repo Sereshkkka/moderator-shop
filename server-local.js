@@ -113,6 +113,7 @@ function mapUserRow(row, accessRows, allCompanyIds = []) {
     role: roleId,
     companyId: row.company_id,
     date: row.created_at,
+    lastLoginAt: row.last_login_at || null,
     cart: Array.isArray(row.cart) ? row.cart : [],
     isArchived: !!row.is_archived,
     isPendingActivation: !!row.is_pending_activation,
@@ -389,6 +390,10 @@ async function ensureDatabaseCompat() {
     add column if not exists reprimands jsonb not null default '{}'::jsonb
   `);
   await pool.query(`
+    alter table if exists users
+    add column if not exists last_login_at timestamptz null
+  `);
+  await pool.query(`
     alter table if exists logs
     add column if not exists purchase_details jsonb null
   `);
@@ -425,7 +430,7 @@ async function saveSnapshotToDatabase(snapshot, actorUserId) {
     transactionStarted = true;
     await client.query("select pg_advisory_xact_lock(hashtext('modshop_full_snapshot_save'))");
 
-    const existingUsersResult = await client.query('select id, username, role_id, server_roles from users');
+    const existingUsersResult = await client.query('select id, username, role_id, server_roles, last_login_at from users');
     const existingCompaniesResult = await client.query('select id from companies');
     const existingUsers = new Map(existingUsersResult.rows.map((row) => [row.id, row]));
     const existingCompanyIds = new Set(existingCompaniesResult.rows.map((row) => row.id));
@@ -509,9 +514,9 @@ async function saveSnapshotToDatabase(snapshot, actorUserId) {
     for (const user of users) {
       await client.query(
         `insert into users
-          (id, username, password_hash, coins, role_id, company_id, cart, is_archived, is_pending_activation, must_change_password, account_status, discord_id, discord_username, discord_avatar_url, invite_code_id, server_roles, reprimands)
+          (id, username, password_hash, coins, role_id, company_id, cart, is_archived, is_pending_activation, must_change_password, account_status, discord_id, discord_username, discord_avatar_url, invite_code_id, server_roles, reprimands, last_login_at)
           values
-           ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15, $16::jsonb, $17::jsonb)`,
+           ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15, $16::jsonb, $17::jsonb, $18::timestamptz)`,
         [
           user.id,
           user.username,
@@ -529,7 +534,8 @@ async function saveSnapshotToDatabase(snapshot, actorUserId) {
           user.discordAvatarUrl || '',
           user.inviteCodeId || null,
           JSON.stringify(user.companyRoles || {}),
-          JSON.stringify(user.reprimands || {})
+          JSON.stringify(user.reprimands || {}),
+          user.lastLoginAt || (existingUsers.get(user.id) && existingUsers.get(user.id).last_login_at) || null
         ]
       );
     }
@@ -640,7 +646,8 @@ async function activateInviteCode(inviteCode, passwordHash) {
            is_pending_activation = false,
            must_change_password = false,
            account_status = $2,
-           invite_code_id = null
+           invite_code_id = null,
+           last_login_at = now()
        where id = $3
        returning *`,
       [normalizedPasswordHash, 'активен', userRow.id]
@@ -666,6 +673,32 @@ async function activateInviteCode(inviteCode, passwordHash) {
   } finally {
     client.release();
   }
+}
+
+async function recordUserLogin(userId, passwordHash, discordId) {
+  const normalizedUserId = String(userId || '').trim();
+  const normalizedPasswordHash = String(passwordHash || '').trim().toLowerCase();
+  const normalizedDiscordId = normalizeDiscordId(discordId);
+  if (!normalizedUserId) {
+    throw new Error('User id is required.');
+  }
+
+  const userResult = await pool.query('select * from users where id = $1', [normalizedUserId]);
+  const user = userResult.rows[0];
+  if (!user) {
+    throw new Error('User not found.');
+  }
+  const passwordMatches = normalizedPasswordHash && String(user.password_hash || '') === normalizedPasswordHash;
+  const discordMatches = normalizedDiscordId && normalizeDiscordId(user.discord_id) === normalizedDiscordId;
+  if (!passwordMatches && !discordMatches) {
+    throw new Error('Login proof is invalid.');
+  }
+
+  const updatedResult = await pool.query(
+    'update users set last_login_at = now() where id = $1 returning last_login_at',
+    [normalizedUserId]
+  );
+  return updatedResult.rows[0].last_login_at;
 }
 
 async function updateUserRole(actorUserId, actorPasswordHash, targetUserId, companyId, newRoleId) {
@@ -879,6 +912,21 @@ async function handleApi(req, res, pathname) {
       const body = await parseRequestBody(req);
       const result = await activateInviteCode(body.inviteCode, body.passwordHash);
       sendJson(res, 200, { ok: true, result });
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: error.message });
+    }
+    return true;
+  }
+
+  if (pathname === '/api/record-login' && req.method === 'POST') {
+    if (!pool) {
+      sendJson(res, 500, { ok: false, error: 'DATABASE_URL is not configured' });
+      return true;
+    }
+    try {
+      const body = await parseRequestBody(req);
+      const lastLoginAt = await recordUserLogin(body.userId, body.passwordHash, body.discordId);
+      sendJson(res, 200, { ok: true, lastLoginAt });
     } catch (error) {
       sendJson(res, 400, { ok: false, error: error.message });
     }

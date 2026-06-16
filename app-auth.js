@@ -164,6 +164,7 @@ async function handleDiscordOAuthCallback() {
         if (!currentUser.cart) currentUser.cart = [];
         try { sessionStorage.setItem('session_user_id', currentUser.id); } catch (e) {}
         currentCompanyId = preferredCompanyId;
+        await recordUserLogin(currentUser, { discordId });
         showToast('Вход через Discord выполнен: ' + currentUser.username);
         return true;
     } catch (error) {

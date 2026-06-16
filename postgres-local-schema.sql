@@ -27,6 +27,7 @@ create table if not exists users (
     server_roles jsonb not null default '{}'::jsonb,
     reprimands jsonb not null default '{}'::jsonb,
     created_at timestamptz not null default now(),
+    last_login_at timestamptz null,
     cart jsonb not null default '[]'::jsonb,
     is_archived boolean not null default false,
     is_pending_activation boolean not null default false,

@@ -271,6 +271,43 @@ function formatAppDate(value, options = {}) {
     return datePart + ', ' + pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());
 }
 
+function formatLastLoginDate(value) {
+    return value ? formatAppDate(value, { dateOnly: true }) : 'не входил';
+}
+
+async function recordUserLogin(user, proof = {}) {
+    if (!user || !user.id) return;
+    const fallbackLoginAt = new Date().toISOString();
+    try {
+        if (USE_SERVER_DATABASE_SYNC) {
+            const response = await fetch('/api/record-login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: user.id,
+                    passwordHash: proof.passwordHash || '',
+                    discordId: proof.discordId || ''
+                })
+            });
+            const payload = await response.json().catch(() => ({}));
+            user.lastLoginAt = response.ok && payload.ok && payload.lastLoginAt
+                ? payload.lastLoginAt
+                : fallbackLoginAt;
+        } else {
+            user.lastLoginAt = fallbackLoginAt;
+        }
+    } catch (error) {
+        user.lastLoginAt = fallbackLoginAt;
+        console.error('Login date update failed', error);
+    }
+
+    const localUser = db.data && Array.isArray(db.data.users)
+        ? db.data.users.find(item => item.id === user.id)
+        : null;
+    if (localUser) localUser.lastLoginAt = user.lastLoginAt;
+    db.saveLocal();
+}
+
 function appendAvatarSize(url, size) {
     try {
         const parsedUrl = new URL(url, window.location.origin);
@@ -478,6 +515,7 @@ class SupabaseTableGateway {
             role: roleId,
             companyId: row.company_id,
             date: row.created_at,
+            lastLoginAt: row.last_login_at || null,
             cart: Array.isArray(row.cart) ? row.cart : [],
             isArchived: !!row.is_archived,
             isPendingActivation: !!row.is_pending_activation,
@@ -1330,6 +1368,7 @@ class Database {
             if (u.discordAvatarUrl === undefined) u.discordAvatarUrl = '';
             if (u.authUserId === undefined) u.authUserId = null;
             if (u.email === undefined) u.email = '';
+            if (u.lastLoginAt === undefined) u.lastLoginAt = null;
             if (!u.reprimands || typeof u.reprimands !== 'object' || Array.isArray(u.reprimands)) u.reprimands = {};
             const normalizedCoins = Number(u.coins);
             u.coins = Number.isFinite(normalizedCoins)
@@ -1823,6 +1862,7 @@ function renderLogin(root) {
                 try { sessionStorage.setItem('session_user_id', currentUser.id); } catch(err){}
                 currentCompanyId = sessionStorage.getItem('admin_context_company') || currentUser.companyId || 'comp_initial';
                 ensureValidCurrentCompany();
+                await recordUserLogin(currentUser, { passwordHash: currentUser.password });
                 window.location.hash = '';
                 showToast('С возвращением, ' + currentUser.username);
                 renderRoute();
@@ -1848,6 +1888,7 @@ function renderLogin(root) {
             if (!currentUser.cart) currentUser.cart = [];
             try { sessionStorage.setItem('session_user_id', user.id); } catch(err){}
             currentCompanyId = preferredCompanyId;
+            await recordUserLogin(currentUser, { passwordHash: hpw });
             window.location.hash = '';
             showToast('С возвращением, ' + user.username);
             renderRoute();
@@ -1934,7 +1975,7 @@ function renderRegister(root) {
         try {
         const codeValue = document.getElementById('r_code').value.trim();
         const pw = document.getElementById('r_password').value;
-        const finalizeActivationLogin = (user, usernameLabel) => {
+        const finalizeActivationLogin = async (user, usernameLabel) => {
             if (!user) {
                 showToast('Аккаунт активирован, но не удалось открыть сессию автоматически.', 'error');
                 return;
@@ -1952,6 +1993,7 @@ function renderRegister(root) {
                 history.replaceState(null, '', window.location.pathname + window.location.search);
             }
             ensureValidCurrentCompany();
+            await recordUserLogin(currentUser, { passwordHash: currentUser.password });
             showToast('Аккаунт ' + usernameLabel + ' активирован. Добро пожаловать!');
             renderRoute();
         };
@@ -1979,7 +2021,7 @@ function renderRegister(root) {
                 const activatedLocalUser = result.user
                     ? (db.data.users.find(user => user.id === result.user.id) || result.user)
                     : null;
-                finalizeActivationLogin(activatedLocalUser, result.username || 'пользователя');
+                await finalizeActivationLogin(activatedLocalUser, result.username || 'пользователя');
                 return;
             } catch (error) {
                 showToast(error.message || 'Не удалось активировать аккаунт по коду.', 'error');
@@ -2009,7 +2051,7 @@ function renderRegister(root) {
                 const activatedLocalUser = (result && result.user)
                     ? (db.data.users.find(u => u.id === result.user.id) || null)
                     : null;
-                finalizeActivationLogin(activatedLocalUser, activatedUsername);
+                await finalizeActivationLogin(activatedLocalUser, activatedUsername);
                 return;
             } catch (error) {
                 showToast(error.message || 'Не удалось активировать аккаунт по коду.', 'error');
@@ -2054,7 +2096,7 @@ function renderRegister(root) {
           codeObj.isUsed = true;
           await db.save();
           await db.flushRemoteSave();
-          finalizeActivationLogin(reservedUser, targetUn);
+          await finalizeActivationLogin(reservedUser, targetUn);
         } finally {
             if (document.body.contains(registerForm)) {
                 formControls.forEach(control => { control.disabled = false; });

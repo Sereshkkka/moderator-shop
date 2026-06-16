@@ -87,7 +87,7 @@ function renderUsers(container) {
                 '</div>',
                 '<div class="staff-tile-meta">',
                     '<span>' + formatCoinAmount(u.coins) + ' монет</span>',
-                    '<span>' + formatAppDate(u.date, { dateOnly: true }) + '</span>',
+                    '<span>Вход: ' + formatLastLoginDate(u.lastLoginAt) + '</span>',
                 '</div>',
             '</button>'
         ].join('');
@@ -416,7 +416,7 @@ function renderStaffProfile(container, targetUser) {
                     '</table>',
                 '</div>',
                 '<div class="staff-profile-meta">',
-                    '<span><strong>Дата входа:</strong> ' + formatAppDate(targetUser.date, { dateOnly: true }) + '</span>',
+                    '<span><strong>Дата входа:</strong> ' + formatLastLoginDate(targetUser.lastLoginAt) + '</span>',
                     (isUserOnVacation(targetUser, currentCompanyId) ? '<span><strong>Отпуск:</strong> В отпуске</span>' : ''),
                     (isUserOnVacation(targetUser, currentCompanyId) ? '<span><strong>Вернется в роль:</strong> ' + escapeHTML(getRoleLabel(effectiveRoleId)) + '</span>' : ''),
                 '</div>',
