@@ -1666,6 +1666,10 @@ async function initApp() {
         }
     }
 
+    if (currentUser) {
+        await recordUserLogin(currentUser, { passwordHash: currentUser.password });
+    }
+
     renderRoute();
     showPendingReloadToast();
 }
