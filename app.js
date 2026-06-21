@@ -1667,6 +1667,7 @@ async function initApp() {
     }
 
     if (currentUser) {
+        ensureValidCurrentCompany();
         await recordUserLogin(currentUser, { passwordHash: currentUser.password });
     }
 
@@ -2278,6 +2279,7 @@ function canOpenDashboardTarget(target, isWebsiteAdmin) {
 function renderDashboard(root) {
     stopStaffProfileAutoRefresh();
     refreshCurrentUserReference();
+    ensureValidCurrentCompany();
     const isHighMod = hasPermission('access_mod_panel');
     const isWebsiteAdmin = hasGlobalControlAccess();
     const canAccessAllServers = hasAllServersAccess();
